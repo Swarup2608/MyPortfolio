@@ -1,24 +1,41 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminAuth } from "@/lib/adminAuthContext";
+import { adminFetch } from "@/lib/adminApi";
+import { PERMISSIONS, hasPermission, type Permission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import type { AdminContact } from "@/types/admin";
 
-const links = [
-  { href: "/admin", label: "Dashboard", icon: "▤" },
-  { href: "/admin/analytics", label: "Analytics", icon: "◔" },
-  { href: "/admin/posts", label: "All posts", icon: "☰" },
-  { href: "/admin/posts/new", label: "New post", icon: "+" },
-  { href: "/admin/messages", label: "Messages", icon: "✉" },
+const links: { href: string; label: string; icon: string; permission: Permission }[] = [
+  { href: "/admin", label: "Dashboard", icon: "▤", permission: PERMISSIONS.DASHBOARD_READ },
+  { href: "/admin/analytics", label: "Analytics", icon: "◔", permission: PERMISSIONS.ANALYTICS_READ },
+  { href: "/admin/posts", label: "All posts", icon: "☰", permission: PERMISSIONS.POSTS_READ },
+  { href: "/admin/projects", label: "Projects", icon: "◱", permission: PERMISSIONS.PROJECTS_READ },
+  { href: "/admin/messages", label: "Messages", icon: "✉", permission: PERMISSIONS.CONTACTS_READ },
+  { href: "/admin/users", label: "Users", icon: "☺", permission: PERMISSIONS.USERS_READ },
+  { href: "/admin/audit-logs", label: "Audit logs", icon: "≡", permission: PERMISSIONS.AUDIT_LOG_READ },
 ];
 
 export function AdminNav() {
   const pathname = usePathname();
   const { user, logout } = useAdminAuth();
+  const visibleLinks = user ? links.filter((link) => hasPermission(user.role, link.permission)) : [];
+  const canReadContacts = user ? hasPermission(user.role, PERMISSIONS.CONTACTS_READ) : false;
+
+  const [newMessageCount, setNewMessageCount] = useState(0);
+
+  useEffect(() => {
+    if (!canReadContacts) return;
+    adminFetch<{ success: true; data: AdminContact[] }>("/admin/contact")
+      .then((data) => setNewMessageCount(data.data.filter((m) => m.status === "NEW").length))
+      .catch(() => {});
+  }, [canReadContacts]);
 
   return (
-    <aside className="sticky top-0 flex h-screen w-59 flex-none flex-col gap-1 border-r border-foreground/10 bg-[#0a0a0a] p-4">
+    <aside className="flex h-screen w-59 flex-none flex-col gap-1 overflow-y-auto border-r border-foreground/10 bg-[#0a0a0a] p-4">
       <div className="px-2.5 pb-5 pt-1.5 text-xl font-black uppercase tracking-wide text-foreground">
         {(user?.name || "Admin").split(" ")[0]}
         <span className="text-accent">.</span>
@@ -27,7 +44,7 @@ export function AdminNav() {
         </span>
       </div>
 
-      {links.map((link) => {
+      {visibleLinks.map((link) => {
         const active = pathname === link.href;
         return (
           <Link
@@ -42,6 +59,11 @@ export function AdminNav() {
           >
             <span className="w-4 flex-none text-center opacity-80">{link.icon}</span>
             {link.label}
+            {link.href === "/admin/messages" && newMessageCount > 0 && (
+              <span className="ml-auto rounded-full bg-accent px-2 py-0.5 text-[.66rem] font-medium text-accent-foreground">
+                {newMessageCount}
+              </span>
+            )}
           </Link>
         );
       })}

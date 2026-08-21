@@ -1,17 +1,19 @@
-import crypto from "node:crypto";
 import { Contact } from "../models/Contact.model.js";
 import { CreateContactInput } from "../schemas/contact.schema.js";
-import { env } from "../config/env.js";
 import { AppError } from "../utils/app-error.js";
 import { validateObjectId } from "../utils/object-id.js";
-
-function HashIp(ip: string): string{
-    return crypto.createHmac("sha256",env.JWT_SECRET).update(ip).digest("hex");
-}
+import { hashIp } from "../utils/hash.js";
 
 export async function createContact(input: CreateContactInput, metadata: {ip: string, userAgent?: string;}){
+    // Honeypot: real visitors never see/fill this field, so a non-empty value
+    // means a bot. Return success without persisting anything, so the bot
+    // gets no signal it was caught (never reveal detection).
+    if(input.website){
+        return null;
+    }
+    const {website, ...contactData} = input;
     const contact = await Contact.create({
-        ...input, ipHash: HashIp(metadata.ip), userAgent: metadata.userAgent
+        ...contactData, ipHash: hashIp(metadata.ip), userAgent: metadata.userAgent
     });
     return contact;
 }

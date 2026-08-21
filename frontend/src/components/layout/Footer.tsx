@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { siteConfig } from "@/lib/siteConfig";
 
@@ -16,6 +19,10 @@ const socials = [
 ];
 
 export function Footer() {
+  const pathname = usePathname();
+
+  if (pathname?.startsWith("/admin")) return null;
+
   return (
     <footer className="border-t border-foreground/10 px-5 pb-8 pt-14 sm:px-10 sm:pt-20">
       <Container className="max-w-6xl">

@@ -30,6 +30,6 @@ projectRoutes.patch("/:id",requirePermission(PERMISSIONS.PROJECTS_UPDATE),requir
 projectRoutes.delete("/:id",requirePermission(PERMISSIONS.PROJECTS_DELETE),requireCsrf,deleteProjectController);
 
 // Change Project Status
-projectRoutes.patch("/:id/status",requirePermission(PERMISSIONS.POSTS_PUBLISH),requireCsrf,validateBody(projectStatusSchema),asyncHandler(changeProjectStatusController));
+projectRoutes.patch("/:id/status",requirePermission(PERMISSIONS.PROJECTS_PUBLISH),requireCsrf,validateBody(projectStatusSchema),asyncHandler(changeProjectStatusController));
 
 export default projectRoutes;

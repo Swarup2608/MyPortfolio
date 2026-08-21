@@ -55,7 +55,7 @@ export async function createUser(input : CreateUserInput){
 export async function updateUser(userId: string, input: UpdateUserInput){
     validateObjectId(userId);
     if(input.email){
-        const exisitingUser = await User.findOne({email: input.email, id: {$ne: userId}});
+        const exisitingUser = await User.findOne({email: input.email, _id: {$ne: userId}});
         if(exisitingUser){
             throw new Error("USER_ALREADY_EXISTS");
         }
@@ -80,6 +80,28 @@ export async function updateUserPassword(userId: string, input: UpdateUserPasswo
     validateObjectId(userId);
     const passwordHash = await bcrypt.hash(input.password,BCRYPT_ROUNDS);
     const user = await User.findByIdAndUpdate(userId, {$set: {passwordHash}},{new: true}).lean();
+    if(!user){
+        return null;
+    }
+    return sanitizeUser(user);
+}
+
+// Counts currently-active ADMINs, optionally excluding one user (the target
+// of a deactivate/delete action) so callers can check "would this leave zero".
+export async function countActiveAdmins(excludeUserId?: string){
+    if(excludeUserId){
+        validateObjectId(excludeUserId);
+    }
+    const filter: Record<string, unknown> = { role: "ADMIN", isActive: true };
+    if(excludeUserId){
+        filter._id = { $ne: excludeUserId };
+    }
+    return User.countDocuments(filter);
+}
+
+export async function deleteUser(userId: string){
+    validateObjectId(userId);
+    const user = await User.findByIdAndDelete(userId).lean();
     if(!user){
         return null;
     }

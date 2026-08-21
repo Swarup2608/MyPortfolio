@@ -3,7 +3,7 @@ import {Schema,model, type Document, type Types} from 'mongoose';
 export const POST_STATUSES = [
     'DRAFT',
     'PUBLISHED',
-    'ARCHIEVED',
+    'ARCHIVED',
 ] as const;
 
 export type PostStatus = (typeof POST_STATUSES)[number];
@@ -47,7 +47,7 @@ const postSchema = new Schema<IPost>({
     },
     tags:{ type: [String], defualt: [] },
     category: {type: String,trim: true, maxlength: 100},
-    author: {type: Schema.Types.ObjectId,red:"User",required: true, index:true},
+    author: {type: Schema.Types.ObjectId,ref:"User",required: true, index:true},
     status: {type: String, enum: POST_STATUSES,default:"DRAFT",index:true},
     publishedAt: {type: Date, index:true},
     seo:{

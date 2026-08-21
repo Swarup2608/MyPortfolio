@@ -35,3 +35,14 @@ export const contactRateLimiter = rateLimit({
     message: "[rate-limit] Too many contact submission, please try again."
   }
 });
+
+export const analyticsRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "[rate-limit] Too many analytics events. Please try again later.",
+  },
+});

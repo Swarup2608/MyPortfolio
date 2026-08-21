@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { adminFetch } from "@/lib/adminApi";
-import type { PostListItem, PostListResponse } from "@/types/post";
+import type { AdminPost, AdminContact } from "@/types/admin";
 
 const statusColor = (status?: string) =>
-  status === "published" ? "#4ade80" : "rgba(215,226,234,.5)";
+  status === "PUBLISHED" ? "#4ade80" : "rgba(215,226,234,.5)";
 
 // No visitor-tracking backend exists yet, so instead of fabricating traffic
 // numbers we chart something real: how many posts were published each month.
-function publishedByMonth(posts: PostListItem[]) {
+function publishedByMonth(posts: AdminPost[]) {
   const months: { key: string; label: string }[] = [];
   const now = new Date();
   for (let i = 11; i >= 0; i--) {
@@ -32,24 +32,27 @@ function publishedByMonth(posts: PostListItem[]) {
   }));
 }
 
-interface ContactMessage {
-  _id: string;
-  name: string;
-  email: string;
-  createdAt: string;
+interface AdminPostsResponse {
+  success: true;
+  data: AdminPost[];
+}
+
+interface AdminContactsResponse {
+  success: true;
+  data: AdminContact[];
 }
 
 export default function AdminDashboardPage() {
-  const [posts, setPosts] = useState<PostListItem[] | null>(null);
-  const [messages, setMessages] = useState<ContactMessage[] | null>(null);
+  const [posts, setPosts] = useState<AdminPost[] | null>(null);
+  const [messages, setMessages] = useState<AdminContact[] | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    adminFetch<PostListResponse>("/admin/posts?limit=100")
-      .then((data) => setPosts(data.posts))
+    adminFetch<AdminPostsResponse>("/admin/posts")
+      .then((data) => setPosts(data.data))
       .catch(() => setError("Failed to load posts"));
-    adminFetch<{ success: true; messages: ContactMessage[] }>("/admin/contact?limit=5")
-      .then((data) => setMessages(data.messages))
+    adminFetch<AdminContactsResponse>("/admin/contact")
+      .then((data) => setMessages(data.data.slice(0, 5)))
       .catch(() => setMessages([]));
   }, []);
 
@@ -57,15 +60,15 @@ export default function AdminDashboardPage() {
     if (!posts) return null;
     return {
       total: posts.length,
-      published: posts.filter((p) => p.status === "published").length,
-      draft: posts.filter((p) => p.status === "draft").length,
-      views: posts.reduce((sum, p) => sum + (p.views ?? 0), 0),
+      published: posts.filter((p) => p.status === "PUBLISHED").length,
+      draft: posts.filter((p) => p.status === "DRAFT").length,
+      views: posts.reduce((sum, p) => sum + (p.viewCount ?? 0), 0),
       tags: new Set(posts.flatMap((p) => p.tags)).size,
     };
   }, [posts]);
 
   const topPosts = useMemo(
-    () => (posts ? [...posts].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5) : []),
+    () => (posts ? [...posts].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0)).slice(0, 5) : []),
     [posts]
   );
   const recentPosts = useMemo(
@@ -156,7 +159,7 @@ export default function AdminDashboardPage() {
               className="flex justify-between gap-3 border-b border-foreground/5 py-2.5 last:border-b-0"
             >
               <span className="truncate text-sm font-light text-foreground/85">{p.title}</span>
-              <span className="flex-none text-xs font-light text-foreground/35">{p.views ?? 0}</span>
+              <span className="flex-none text-xs font-light text-foreground/35">{p.viewCount ?? 0}</span>
             </div>
           ))}
         </div>

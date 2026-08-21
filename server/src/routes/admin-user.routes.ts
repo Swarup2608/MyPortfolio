@@ -1,9 +1,10 @@
 import { Router } from "express";
 
-import { getUserByIDController, getUsersController, createAdminUser, updateAdminUser, updateAdminUserStatus, updateAdminUserPassword } from "../controllers/admin-user.controller.js";
+import { getUserByIDController, getUsersController, createAdminUser, updateAdminUser, updateAdminUserStatus, updateAdminUserPassword, deleteAdminUser } from "../controllers/admin-user.controller.js";
 
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { requirePermission } from "../middleware/permission.middleware.js";
+import { requireCsrf } from "../middleware/csrf.middleware.js";
 import { validateBody } from "../middleware/validate.middleware.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { PERMISSIONS } from "../config/permissions.js";
@@ -20,12 +21,14 @@ router.get( "/", requirePermission(PERMISSIONS.USERS_READ), asyncHandler(getUser
 
 router.get( "/:id", requirePermission(PERMISSIONS.USERS_READ),  asyncHandler(getUserByIDController));
 
-router.post( "/", requirePermission(PERMISSIONS.USERS_CREATE), validateBody(createUserSchema), asyncHandler(createAdminUser));
+router.post( "/", requirePermission(PERMISSIONS.USERS_CREATE), requireCsrf, validateBody(createUserSchema), asyncHandler(createAdminUser));
 
-router.patch( "/:id", requirePermission(PERMISSIONS.USERS_UPDATE), validateBody(updateUserSchema),asyncHandler(updateAdminUser));
+router.patch( "/:id", requirePermission(PERMISSIONS.USERS_UPDATE), requireCsrf, validateBody(updateUserSchema),asyncHandler(updateAdminUser));
 
-router.patch( "/:id/status", requirePermission(PERMISSIONS.USERS_UPDATE), validateBody(updateUserStatusSchema), asyncHandler(updateAdminUserStatus));
+router.patch( "/:id/status", requirePermission(PERMISSIONS.USERS_UPDATE), requireCsrf, validateBody(updateUserStatusSchema), asyncHandler(updateAdminUserStatus));
 
-router.patch( "/:id/password", requirePermission(PERMISSIONS.USERS_UPDATE), validateBody(updateUserPasswordSchema), asyncHandler(updateAdminUserPassword));
+router.patch( "/:id/password", requirePermission(PERMISSIONS.USERS_UPDATE), requireCsrf, validateBody(updateUserPasswordSchema), asyncHandler(updateAdminUserPassword));
+
+router.delete( "/:id", requirePermission(PERMISSIONS.USERS_DELETE), requireCsrf, asyncHandler(deleteAdminUser));
 
 export default router;

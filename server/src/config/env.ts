@@ -7,9 +7,15 @@ const envSchema = z.object({
     FRONTEND_URL : z.string().url().default("http://localhost:3000"),
     MONGODB_URI : z.string().url().min(1, "[server] MONGODB_URI is required"),
     JWT_SECRET : z.string().min(32, "[server] JWT_SECRET is required"),
+    IP_HASH_SECRET : z.string().min(32, "[server] IP_HASH_SECRET is required"),
     JWT_EXPIRES_IN : z.string().default("8h"),
     COOKIE_SAMESITE : z.enum(["lax","strict","none"]).default("lax"),
     COOKIE_SECURE : z.coerce.boolean().default(false).transform((val) => val === true),
+    R2_ACCOUNT_ID : z.string().min(1, "[server] R2_ACCOUNT_ID is required"),
+    R2_ACCESS_KEY_ID : z.string().min(1, "[server] R2_ACCESS_KEY_ID is required"),
+    R2_SECRET_ACCESS_KEY : z.string().min(1, "[server] R2_SECRET_ACCESS_KEY is required"),
+    R2_BUCKET_NAME : z.string().min(1, "[server] R2_BUCKET_NAME is required"),
+    R2_PUBLIC_URL : z.string().url().min(1, "[server] R2_PUBLIC_URL is required"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

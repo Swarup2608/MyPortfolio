@@ -5,6 +5,7 @@ import {createAccessToken} from "../utils/jwt.js";
 import {env} from "../config/env.js";
 import {Types} from "mongoose";
 import type {AuthenticatedRequest} from "../middleware/auth.middleware.js";
+import { createAuditLog } from "../services/audit.service.js";
 
 
 // Login controller - Will verify if the user exists and if the password is correct, then generate a JWT token and send it back to the client via a cookie. The token will be used for authentication in subsequent requests.
@@ -31,6 +32,14 @@ export async function login(req: Request, res: Response) : Promise<void>{
         const token = createAccessToken(user._id.toString(), user.role);
         user.lastLoginAt = new Date();
         await user.save();
+        await createAuditLog({
+            req,
+            userId: user._id.toString(),
+            action: "LOGIN",
+            resource: "USER",
+            resourceId: user._id.toString(),
+            description: `User "${user.name}" logged in`,
+        });
         res.cookie("access_token", token, {
             httpOnly: true,
             secure: env.COOKIE_SECURE,

@@ -1,29 +1,72 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { adminFetch } from "@/lib/adminApi";
-import type { PostListItem, PostListResponse } from "@/types/post";
+import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { usePermission } from "@/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/permissions";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import type { AdminPost, AdminPostStatus } from "@/types/admin";
 
-const statusColor = (status?: string) =>
-  status === "published" ? "#4ade80" : "rgba(215,226,234,.5)";
+interface AdminPostsResponse {
+  success: true;
+  data: AdminPost[];
+}
+
+const statusColor = (status: AdminPostStatus) =>
+  status === "PUBLISHED" ? "#4ade80" : status === "ARCHIVED" ? "rgba(215,226,234,.3)" : "rgba(215,226,234,.5)";
+
+const STATUS_FILTERS: { key: "ALL" | AdminPostStatus; label: string }[] = [
+  { key: "ALL", label: "All" },
+  { key: "DRAFT", label: "Draft" },
+  { key: "PUBLISHED", label: "Published" },
+  { key: "ARCHIVED", label: "Archived" },
+];
 
 export default function AllPostsPage() {
-  const [posts, setPosts] = useState<PostListItem[] | null>(null);
+  const [posts, setPosts] = useState<AdminPost[] | null>(null);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | AdminPostStatus>("ALL");
+  const [pendingDelete, setPendingDelete] = useState<AdminPost | null>(null);
+  const canDelete = usePermission(PERMISSIONS.POSTS_DELETE);
 
   function load() {
-    adminFetch<PostListResponse>("/admin/posts?limit=100")
-      .then((data) => setPosts(data.posts))
+    adminFetch<AdminPostsResponse>("/admin/posts")
+      .then((data) => setPosts(data.data))
       .catch(() => setError("Failed to load posts"));
   }
 
   useEffect(load, []);
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this post? This cannot be undone.")) return;
-    await adminFetch(`/admin/posts/${id}`, { method: "DELETE" });
-    load();
+  const filteredPosts = useMemo(() => {
+    if (!posts) return [];
+    const query = search.trim().toLowerCase();
+    return posts.filter((post) => {
+      const matchesSearch =
+        !query ||
+        post.title.toLowerCase().includes(query) ||
+        post.excerpt.toLowerCase().includes(query) ||
+        post.tags.some((tag) => tag.toLowerCase().includes(query));
+      const matchesStatus = statusFilter === "ALL" || post.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [posts, search, statusFilter]);
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    try {
+      await adminFetch(`/admin/posts/${pendingDelete._id}`, { method: "DELETE" });
+      setPendingDelete(null);
+      load();
+      toast.success("Post deleted.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to delete post");
+    }
   }
 
   return (
@@ -38,13 +81,42 @@ export default function AllPostsPage() {
         </Link>
       </div>
 
+      <div className="mt-6 flex flex-wrap items-center gap-2.5">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search posts…"
+          className="rounded-full border border-foreground/15 bg-transparent px-4 py-2 text-xs font-light text-foreground outline-none transition-colors focus:border-accent"
+        />
+        <div className="flex gap-1.5">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              className={cn(
+                "rounded-full border px-4 py-2 text-xs font-light transition-colors",
+                statusFilter === f.key
+                  ? "border-accent bg-accent-soft text-accent"
+                  : "border-foreground/15 text-foreground/55 hover:bg-foreground/5"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {error && <p className="mt-6 text-sm text-red-400">{error}</p>}
       {!error && !posts && <p className="mt-6 text-foreground/40">Loading…</p>}
+      {posts && posts.length > 0 && filteredPosts.length === 0 && (
+        <p className="mt-6 text-foreground/40">No posts match these filters.</p>
+      )}
       {posts && posts.length === 0 && (
         <p className="mt-6 text-foreground/40">No posts yet. Create your first one.</p>
       )}
 
-      {posts && posts.length > 0 && (
+      {filteredPosts.length > 0 && (
         <div className="mt-7 overflow-hidden rounded-2xl border border-foreground/10 bg-surface">
           <div className="overflow-x-auto">
             <table className="w-full min-w-165 text-sm">
@@ -58,7 +130,7 @@ export default function AllPostsPage() {
                 </tr>
               </thead>
               <tbody>
-                {posts.map((post) => (
+                {filteredPosts.map((post) => (
                   <tr
                     key={post._id}
                     className="border-b border-foreground/5 transition-colors last:border-b-0 hover:bg-foreground/2"
@@ -75,28 +147,33 @@ export default function AllPostsPage() {
                         {post.status}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-foreground/40">{post.views ?? 0}</td>
+                    <td className="px-5 py-3.5 text-foreground/40">{post.viewCount ?? 0}</td>
                     <td className="px-5 py-3.5">
-                      <div className="flex gap-3.5 text-xs">
-                        {post.status === "published" && (
+                      <div className="flex items-center gap-3.5 text-xs">
+                        {post.status === "PUBLISHED" && (
                           <a
                             href={`/blog/${post.slug}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-foreground/55 hover:text-foreground"
+                            className="flex items-center gap-1 text-foreground/55 hover:text-foreground"
                           >
-                            View
+                            <Eye size={14} /> View
                           </a>
                         )}
-                        <Link href={`/admin/posts/${post._id}/edit`} className="text-accent">
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(post._id)}
-                          className="text-red-400 hover:text-red-300"
+                        <Link
+                          href={`/admin/posts/${post._id}/edit`}
+                          className="flex items-center gap-1 text-accent"
                         >
-                          Delete
-                        </button>
+                          <Pencil size={14} /> Edit
+                        </Link>
+                        {canDelete && (
+                          <button
+                            onClick={() => setPendingDelete(post)}
+                            className="flex items-center gap-1 text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -106,6 +183,14 @@ export default function AllPostsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Delete this post?"
+        description={pendingDelete ? `"${pendingDelete.title}" will be permanently removed. This cannot be undone.` : undefined}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

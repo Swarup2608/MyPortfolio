@@ -4,16 +4,21 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { PostForm } from "@/components/admin/PostForm";
 import { adminFetch } from "@/lib/adminApi";
-import type { Post, PostResponse } from "@/types/post";
+import type { AdminPost } from "@/types/admin";
+
+interface AdminPostResponse {
+  success: true;
+  data: AdminPost;
+}
 
 export default function EditPostPage() {
   const params = useParams<{ id: string }>();
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<AdminPost | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    adminFetch<PostResponse>(`/admin/posts/${params.id}`)
-      .then((data) => setPost(data.post))
+    adminFetch<AdminPostResponse>(`/admin/posts/${params.id}`)
+      .then((data) => setPost(data.data))
       .catch(() => setError("Post not found"));
   }, [params.id]);
 

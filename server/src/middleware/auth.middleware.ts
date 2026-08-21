@@ -13,7 +13,7 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
         const token = req.cookies?.access_token;
         if(!token){
             res.status(401).json({
-                sucess: false,
+                success: false,
                 message: "[auth] Access token is missing",
             });
             return;

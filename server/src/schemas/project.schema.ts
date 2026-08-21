@@ -8,7 +8,7 @@ const slugSchema = z.string().trim().min(3).max(200).regex(
 export const createProjectSchema = z.object({
     title: z.string().trim().min(2).max(200),
     slug: slugSchema,
-    shortDescription : z.string().trim().min(1).min(300),
+    shortDescription : z.string().trim().min(1).max(300),
     description: z.string().min(1),
     image: z.object({
         url : z.string().url(),

@@ -15,6 +15,7 @@ export const PERMISSIONS = {
   PROJECTS_CREATE: "projects:create",
   PROJECTS_UPDATE: "projects:update",
   PROJECTS_DELETE: "projects:delete",
+  PROJECTS_PUBLISH: "projects:publish",
 
   CONTACTS_READ: "contacts:read",
   CONTACTS_UPDATE: "contacts:update",
@@ -28,6 +29,7 @@ export const PERMISSIONS = {
   USERS_CREATE: "users:create",
   USERS_UPDATE: "users:update",
   USERS_DELETE: "users:delete",
+  AUDIT_LOG_READ: "audit-logs:read",
 } as const;
 
 export type Permission =
@@ -52,6 +54,7 @@ export const ROLE_PERMISSIONS: Record<
     PERMISSIONS.PROJECTS_CREATE,
     PERMISSIONS.PROJECTS_UPDATE,
     PERMISSIONS.PROJECTS_DELETE,
+    PERMISSIONS.PROJECTS_PUBLISH,
 
     PERMISSIONS.CONTACTS_READ,
     PERMISSIONS.CONTACTS_UPDATE,
@@ -65,6 +68,7 @@ export const ROLE_PERMISSIONS: Record<
     PERMISSIONS.USERS_CREATE,
     PERMISSIONS.USERS_UPDATE,
     PERMISSIONS.USERS_DELETE,
+    PERMISSIONS.AUDIT_LOG_READ,
   ],
 
   EDITOR: [
@@ -82,6 +86,9 @@ export const ROLE_PERMISSIONS: Record<
     PERMISSIONS.PROJECTS_CREATE,
     PERMISSIONS.PROJECTS_UPDATE,
     PERMISSIONS.PROJECTS_DELETE,
+    PERMISSIONS.PROJECTS_PUBLISH,
+
+    PERMISSIONS.CONTACTS_READ,
   ],
 
   VIEWER: [

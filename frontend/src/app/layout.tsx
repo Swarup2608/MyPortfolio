@@ -4,7 +4,10 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { siteConfig } from "@/lib/siteConfig";
+import { ThemeProvider, themeInitScript } from "@/lib/themeContext";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
 const kanit = Kanit({
   variable: "--font-kanit",
@@ -22,24 +25,31 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${kanit.variable} h-full antialiased`}>
+    <html lang="en" className={`${kanit.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="flex min-h-full flex-col">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
-        <Toaster
-          position="bottom-center"
-          toastOptions={{
-            style: {
-              background: "var(--surface)",
-              color: "var(--foreground)",
-              border: "1px solid rgba(215, 226, 234, 0.14)",
-              fontSize: "0.875rem",
-            },
-            success: { iconTheme: { primary: "var(--accent)", secondary: "var(--surface)" } },
-            error: { iconTheme: { primary: "#f87171", secondary: "var(--surface)" } },
-          }}
-        />
+        <ThemeProvider>
+          <PageViewTracker />
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Footer />
+          <ThemeSwitcher />
+          <Toaster
+            position="bottom-center"
+            toastOptions={{
+              style: {
+                background: "var(--surface)",
+                color: "var(--foreground)",
+                border: "1px solid rgba(215, 226, 234, 0.14)",
+                fontSize: "0.875rem",
+              },
+              success: { iconTheme: { primary: "var(--accent)", secondary: "var(--surface)" } },
+              error: { iconTheme: { primary: "#f87171", secondary: "var(--surface)" } },
+            }}
+          />
+        </ThemeProvider>
       </body>
     </html>
   );

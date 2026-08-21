@@ -4,19 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDate } from "@/lib/utils";
 import { adminFetch } from "@/lib/adminApi";
 import { cn } from "@/lib/utils";
-
-interface ContactMessage {
-  _id: string;
-  name: string;
-  email: string;
-  message: string;
-  read: boolean;
-  createdAt: string;
-}
+import { usePermission } from "@/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/permissions";
+import type { AdminContact, ContactStatus } from "@/types/admin";
 
 interface MessagesResponse {
   success: true;
-  messages: ContactMessage[];
+  data: AdminContact[];
 }
 
 const DATE_RANGES = [
@@ -26,15 +20,23 @@ const DATE_RANGES = [
   { key: "90", label: "90 days" },
 ] as const;
 
+const STATUS_FILTERS: { key: "ALL" | ContactStatus; label: string }[] = [
+  { key: "ALL", label: "All" },
+  { key: "NEW", label: "New" },
+  { key: "READ", label: "Read" },
+  { key: "ARCHIVED", label: "Archived" },
+];
+
 type DateRangeKey = (typeof DATE_RANGES)[number]["key"] | "custom";
 type SortOrder = "newest" | "oldest";
 
 export default function AdminMessagesPage() {
-  const [messages, setMessages] = useState<ContactMessage[] | null>(null);
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [messages, setMessages] = useState<AdminContact[] | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | ContactStatus>("ALL");
   const [dateRange, setDateRange] = useState<DateRangeKey>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [now, setNow] = useState<number | null>(null);
+  const canUpdate = usePermission(PERMISSIONS.CONTACTS_UPDATE);
 
   const [showCustom, setShowCustom] = useState(false);
   const [customFrom, setCustomFrom] = useState("");
@@ -55,15 +57,20 @@ export default function AdminMessagesPage() {
   }, [showCustom]);
 
   function load() {
-    adminFetch<MessagesResponse>("/admin/contact?limit=50").then((data) =>
-      setMessages(data.messages)
+    adminFetch<MessagesResponse>("/admin/contact").then((data) =>
+      setMessages(data.data)
     );
   }
 
   useEffect(load, []);
 
-  async function markRead(id: string) {
-    await adminFetch(`/admin/contact/${id}/read`, { method: "PATCH" });
+  // Opening/viewing a message isn't the same as acknowledging it, so status
+  // only ever changes via an explicit action, never automatically.
+  async function changeStatus(id: string, status: ContactStatus) {
+    await adminFetch(`/admin/contact/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
     load();
   }
 
@@ -72,7 +79,7 @@ export default function AdminMessagesPage() {
 
     let list = messages;
 
-    if (unreadOnly) list = list.filter((m) => !m.read);
+    if (statusFilter !== "ALL") list = list.filter((m) => m.status === statusFilter);
 
     if (dateRange === "custom") {
       const fromTime = appliedFrom ? new Date(`${appliedFrom}T00:00:00`).getTime() : -Infinity;
@@ -90,15 +97,15 @@ export default function AdminMessagesPage() {
       const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       return sortOrder === "newest" ? -diff : diff;
     });
-  }, [messages, unreadOnly, dateRange, sortOrder, now, appliedFrom, appliedTo]);
+  }, [messages, statusFilter, dateRange, sortOrder, now, appliedFrom, appliedTo]);
 
-  const unreadCount = messages?.filter((m) => !m.read).length ?? 0;
+  const newCount = messages?.filter((m) => m.status === "NEW").length ?? 0;
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Messages</h1>
       <p className="mt-1.5 text-sm font-light text-foreground/45">
-        Submissions from the contact form.
+        {newCount} new message{newCount === 1 ? "" : "s"} — submissions from the contact form.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-2.5">
@@ -197,17 +204,22 @@ export default function AdminMessagesPage() {
           )}
         </div>
 
-        <button
-          onClick={() => setUnreadOnly((v) => !v)}
-          className={cn(
-            "rounded-full border px-4 py-2 text-xs font-light transition-colors",
-            unreadOnly
-              ? "border-accent bg-accent-soft text-accent"
-              : "border-foreground/15 text-foreground/55 hover:bg-foreground/5"
-          )}
-        >
-          Unread only{unreadCount > 0 ? ` (${unreadCount})` : ""}
-        </button>
+        <div className="flex gap-1.5">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              className={cn(
+                "rounded-full border px-4 py-2 text-xs font-light transition-colors",
+                statusFilter === f.key
+                  ? "border-accent bg-accent-soft text-accent"
+                  : "border-foreground/15 text-foreground/55 hover:bg-foreground/5"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
 
         <select
           value={sortOrder}
@@ -232,11 +244,12 @@ export default function AdminMessagesPage() {
             key={m._id}
             className={cn(
               "rounded-2xl border border-foreground/10 p-6",
-              m.read ? "bg-surface" : "bg-accent-soft"
+              m.status === "NEW" ? "bg-accent-soft" : "bg-surface"
             )}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
+                {m.subject && <p className="text-sm font-medium text-foreground">{m.subject}</p>}
                 <p className="font-medium text-foreground">{m.name}</p>
                 <a href={`mailto:${m.email}`} className="text-sm text-accent">
                   {m.email}
@@ -246,13 +259,39 @@ export default function AdminMessagesPage() {
                 <span className="text-xs font-light text-foreground/40">
                   {formatDate(m.createdAt)}
                 </span>
-                {!m.read && (
-                  <button
-                    onClick={() => markRead(m._id)}
-                    className="text-xs font-medium uppercase tracking-widest text-accent"
-                  >
-                    Mark as read
-                  </button>
+                <a
+                  href={`mailto:${m.email}?subject=${encodeURIComponent(`Re: ${m.subject || "Your message"}`)}`}
+                  className="text-xs font-medium uppercase tracking-widest text-foreground/55 hover:text-foreground"
+                >
+                  Reply
+                </a>
+                {canUpdate && (
+                  <div className="flex items-center gap-3">
+                    {m.status !== "READ" && (
+                      <button
+                        onClick={() => changeStatus(m._id, "READ")}
+                        className="text-xs font-medium uppercase tracking-widest text-accent"
+                      >
+                        Mark read
+                      </button>
+                    )}
+                    {m.status !== "ARCHIVED" && (
+                      <button
+                        onClick={() => changeStatus(m._id, "ARCHIVED")}
+                        className="text-xs font-medium uppercase tracking-widest text-foreground/55 hover:text-foreground"
+                      >
+                        Archive
+                      </button>
+                    )}
+                    {m.status !== "NEW" && (
+                      <button
+                        onClick={() => changeStatus(m._id, "NEW")}
+                        className="text-xs font-medium uppercase tracking-widest text-foreground/55 hover:text-foreground"
+                      >
+                        Mark new
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

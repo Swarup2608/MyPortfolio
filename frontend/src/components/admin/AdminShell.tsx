@@ -10,11 +10,18 @@ const crumbs: Record<string, string> = {
   "/admin/analytics": "Analytics",
   "/admin/posts": "All posts",
   "/admin/posts/new": "New post",
+  "/admin/projects": "All projects",
+  "/admin/projects/new": "New project",
   "/admin/messages": "Messages",
+  "/admin/users": "Users",
+  "/admin/users/new": "New user",
+  "/admin/audit-logs": "Audit logs",
 };
 
 function crumbFor(pathname: string) {
   if (crumbs[pathname]) return crumbs[pathname];
+  if (pathname.startsWith("/admin/projects/") && pathname.endsWith("/edit")) return "Edit project";
+  if (pathname.startsWith("/admin/users/") && pathname.endsWith("/edit")) return "Edit user";
   if (pathname.endsWith("/edit")) return "Edit post";
   return "Admin";
 }
@@ -30,10 +37,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   if (!user) return null; // redirect to /admin/login already triggered
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-76px)]">
+    <div className="flex h-screen overflow-hidden">
       <AdminNav />
-      <div className="min-w-0 flex-1 bg-background">
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-foreground/10 bg-background/90 px-5 py-4 backdrop-blur-xl sm:px-8">
+      <div className="flex h-screen min-w-0 flex-1 flex-col bg-background">
+        <div className="flex flex-none items-center justify-between gap-4 border-b border-foreground/10 bg-background/90 px-5 py-4 backdrop-blur-xl sm:px-8">
           <span className="text-sm font-light text-foreground/40">{crumbFor(pathname)}</span>
           <div className="flex items-center gap-3">
             <span className="rounded-full border border-foreground/12 px-3.5 py-1.5 text-xs font-light text-foreground/45">
@@ -47,7 +54,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
         </div>
-        <main className="px-5 py-8 sm:px-8 sm:py-10">{children}</main>
+        <main className="flex-1 overflow-y-auto px-5 py-8 sm:px-8 sm:py-10">{children}</main>
       </div>
     </div>
   );

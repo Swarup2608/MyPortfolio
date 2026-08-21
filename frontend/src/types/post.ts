@@ -1,4 +1,4 @@
-export type PostStatus = "draft" | "published";
+export type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
 export interface Post {
   _id: string;
@@ -15,6 +15,7 @@ export interface Post {
   views: number;
   seoTitle?: string;
   seoDescription?: string;
+  seoKeywords?: string[];
   createdAt: string;
   updatedAt: string;
 }

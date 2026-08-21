@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/Badge";
 import { Container } from "@/components/ui/Container";
 import { Reveal } from "@/components/motion/Reveal";
-import { projects, type Project } from "@/lib/siteConfig";
+import { publicFetch } from "@/lib/api";
+import type { Project, ProjectListResponse } from "@/types/project";
 
 const tileGradients = [
   "linear-gradient(135deg, #B600A8 0%, #18011F 100%)",
@@ -27,9 +28,9 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
               </div>
             </div>
           </div>
-          {(project.liveUrl || project.repoUrl) && (
+          {(project.liveUrl || project.githubUrl) && (
             <a
-              href={project.liveUrl || project.repoUrl}
+              href={project.liveUrl || project.githubUrl}
               target="_blank"
               rel="noreferrer"
               className="rounded-full border-2 border-foreground/60 px-5 py-2 text-xs font-medium uppercase tracking-widest text-foreground transition-colors hover:bg-foreground/10"
@@ -40,25 +41,40 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {project.tags.map((tag) => (
-            <Badge key={tag}>{tag}</Badge>
+          {project.technologies.map((tech) => (
+            <Badge key={tech}>{tech}</Badge>
           ))}
         </div>
 
         <p className="mt-4 text-sm font-light leading-relaxed text-foreground/70">
-          {project.description}
+          {project.shortDescription}
         </p>
 
-        <div
-          className="mt-6 aspect-16/10 w-full rounded-[26px]"
-          style={{ background: tileGradients[index % tileGradients.length] }}
-        />
+        {project.image?.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={project.image.url}
+            alt={project.image.alt || ""}
+            loading="lazy"
+            className="mt-6 aspect-16/10 w-full rounded-[26px] object-cover"
+          />
+        ) : (
+          <div
+            className="mt-6 aspect-16/10 w-full rounded-[26px]"
+            style={{ background: tileGradients[index % tileGradients.length] }}
+          />
+        )}
       </div>
     </Reveal>
   );
 }
 
-export function Projects() {
+export async function Projects() {
+  const { data: allProjects } = await publicFetch<ProjectListResponse>("/projects", { revalidate: 30 });
+  const featured = allProjects.filter((p) => p.featured);
+
+  if (featured.length === 0) return null;
+
   return (
     <section
       id="projects"
@@ -76,7 +92,7 @@ export function Projects() {
         </Reveal>
 
         <div className="grid gap-6 sm:grid-cols-2">
-          {projects.map((project, i) => (
+          {featured.map((project, i) => (
             <ProjectCard key={project.slug} project={project} index={i} />
           ))}
         </div>
