@@ -15,13 +15,15 @@ interface SetPasswordDialogProps {
 export function SetPasswordDialog({ open, userName, onSubmit, onCancel }: SetPasswordDialogProps) {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
 
-  useEffect(() => {
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setPassword("");
       setSubmitting(false);
     }
-  }, [open]);
+  }
 
   useEffect(() => {
     if (!open) return;

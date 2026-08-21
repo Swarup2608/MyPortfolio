@@ -14,8 +14,6 @@ export function ThemeSwitcher() {
 
   if (pathname?.startsWith("/admin")) return null;
 
-  themes.find((t) => t.id === theme);
-
   return (
     <motion.div
       drag="y"
@@ -51,7 +49,8 @@ export function ThemeSwitcher() {
                   style={{ background: t.swatch }}
                   aria-hidden
                 />
-                {t.label}
+                <span className="flex-1">{t.label}</span>
+                {theme === t.id && <Check size={13} aria-hidden />}
               </button>
             ))}
           </div>
@@ -70,7 +69,7 @@ export function ThemeSwitcher() {
           aria-expanded={open}
           className="flex h-11 w-11 cursor-grab items-center justify-center rounded-full border border-border bg-surface/95 shadow-lg backdrop-blur-xl active:cursor-grabbing"
         >
-          <span className="h-4 w-4 rounded-full" style={{ background: active.swatch }} aria-hidden />
+          <Palette size={18} className="text-foreground/80" aria-hidden />
         </button>
       </div>
     </motion.div>
