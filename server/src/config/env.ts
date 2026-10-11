@@ -14,6 +14,7 @@ const envSchema = z.object({
     PUBLIC_SERVER_URL : z.string().url().default("http://localhost:5000").transform((value) => value.replace(/\/$/, "")),
     MONGODB_URI : z.string().url().min(1, "[server] MONGODB_URI is required"),
     JWT_SECRET : z.string().min(32, "[server] JWT_SECRET is required"),
+    IP_HASH_SECRET : z.string().min(32, "[server] IP_HASH_SECRET is required"),
     JWT_EXPIRES_IN : z.string().default("8h"),
     COOKIE_SAMESITE : z.enum(["lax","strict","none"]).default("lax"),
     COOKIE_SECURE : z.stringbool().default(false),

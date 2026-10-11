@@ -1,0 +1,94 @@
+// Mirrors server/src/config/permissions.ts exactly. This only gates the UI —
+// the backend's requirePermission middleware is the actual security boundary.
+import type { UserRole } from "@/types/admin";
+
+export const PERMISSIONS = {
+  DASHBOARD_READ: "dashboard:read",
+
+  ANALYTICS_READ: "analytics:read",
+
+  POSTS_READ: "posts:read",
+  POSTS_CREATE: "posts:create",
+  POSTS_UPDATE: "posts:update",
+  POSTS_DELETE: "posts:delete",
+  POSTS_PUBLISH: "posts:publish",
+
+  PROJECTS_READ: "projects:read",
+  PROJECTS_CREATE: "projects:create",
+  PROJECTS_UPDATE: "projects:update",
+  PROJECTS_DELETE: "projects:delete",
+  PROJECTS_PUBLISH: "projects:publish",
+
+  CONTACTS_READ: "contacts:read",
+  CONTACTS_UPDATE: "contacts:update",
+
+  SUBSCRIBERS_READ: "subscribers:read",
+
+  SETTINGS_READ: "settings:read",
+  SETTINGS_UPDATE: "settings:update",
+
+  USERS_READ: "users:read",
+  USERS_CREATE: "users:create",
+  USERS_UPDATE: "users:update",
+  USERS_DELETE: "users:delete",
+  AUDIT_LOG_READ: "audit-logs:read",
+} as const;
+
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
+  ADMIN: [
+    PERMISSIONS.DASHBOARD_READ,
+    PERMISSIONS.ANALYTICS_READ,
+    PERMISSIONS.POSTS_READ,
+    PERMISSIONS.POSTS_CREATE,
+    PERMISSIONS.POSTS_UPDATE,
+    PERMISSIONS.POSTS_DELETE,
+    PERMISSIONS.POSTS_PUBLISH,
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.PROJECTS_CREATE,
+    PERMISSIONS.PROJECTS_UPDATE,
+    PERMISSIONS.PROJECTS_DELETE,
+    PERMISSIONS.PROJECTS_PUBLISH,
+    PERMISSIONS.CONTACTS_READ,
+    PERMISSIONS.CONTACTS_UPDATE,
+    PERMISSIONS.SUBSCRIBERS_READ,
+    PERMISSIONS.SETTINGS_READ,
+    PERMISSIONS.SETTINGS_UPDATE,
+    PERMISSIONS.USERS_READ,
+    PERMISSIONS.USERS_CREATE,
+    PERMISSIONS.USERS_UPDATE,
+    PERMISSIONS.USERS_DELETE,
+    PERMISSIONS.AUDIT_LOG_READ,
+  ],
+
+  EDITOR: [
+    PERMISSIONS.DASHBOARD_READ,
+    PERMISSIONS.ANALYTICS_READ,
+    PERMISSIONS.POSTS_READ,
+    PERMISSIONS.POSTS_CREATE,
+    PERMISSIONS.POSTS_UPDATE,
+    PERMISSIONS.POSTS_DELETE,
+    PERMISSIONS.POSTS_PUBLISH,
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.PROJECTS_CREATE,
+    PERMISSIONS.PROJECTS_UPDATE,
+    PERMISSIONS.PROJECTS_DELETE,
+    PERMISSIONS.PROJECTS_PUBLISH,
+    PERMISSIONS.CONTACTS_READ,
+  ],
+
+  VIEWER: [
+    PERMISSIONS.DASHBOARD_READ,
+    PERMISSIONS.ANALYTICS_READ,
+    PERMISSIONS.POSTS_READ,
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.CONTACTS_READ,
+    PERMISSIONS.SUBSCRIBERS_READ,
+    PERMISSIONS.SETTINGS_READ,
+  ],
+};
+
+export function hasPermission(role: UserRole, permission: Permission): boolean {
+  return ROLE_PERMISSIONS[role].includes(permission);
+}

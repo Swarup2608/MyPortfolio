@@ -42,3 +42,4 @@ export const errorHandler: ErrorRequestHandler = ( error, _req: Request, res: Re
     message: "[error] Internal server error",
   });
 };
+

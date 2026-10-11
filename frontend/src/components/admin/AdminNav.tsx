@@ -1,10 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { useAdminAuth } from "@/lib/adminAuthContext";
+import { adminFetch } from "@/lib/adminApi";
+import { PERMISSIONS, hasPermission, type Permission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import type { AdminContact } from "@/types/admin";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: "▤" },
@@ -18,6 +22,17 @@ const links = [
 export function AdminNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const { user, logout } = useAdminAuth();
+  const visibleLinks = user ? links.filter((link) => hasPermission(user.role, link.permission)) : [];
+  const canReadContacts = user ? hasPermission(user.role, PERMISSIONS.CONTACTS_READ) : false;
+
+  const [newMessageCount, setNewMessageCount] = useState(0);
+
+  useEffect(() => {
+    if (!canReadContacts) return;
+    adminFetch<{ success: true; data: AdminContact[] }>("/admin/contact")
+      .then((data) => setNewMessageCount(data.data.filter((m) => m.status === "NEW").length))
+      .catch(() => {});
+  }, [canReadContacts]);
 
   return (
     <>

@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import mongoose from "mongoose";
 import { corsOptions } from "./config/cors.js";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js";
@@ -42,9 +43,15 @@ app.use("/uploads", express.static(LOCAL_UPLOAD_PATH, {
 }));
 
 app.get("/api/health", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "[server] API is healthy",
+  const databaseConnected = mongoose.connection.readyState === 1;
+
+  res.status(databaseConnected ? 200 : 503).json({
+    success: databaseConnected,
+    status: databaseConnected ? "healthy" : "unhealthy",
+    services: {
+      api: "up",
+      database: databaseConnected ? "up" : "down",
+    },
   });
 });
 

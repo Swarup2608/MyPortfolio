@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { adminFetch, clearCsrfToken } from "@/lib/adminApi";
 import { ApiError } from "@/lib/api";
 
-interface AdminUser {
+interface CurrentAdminUser {
   id: string;
   name: string;
   email: string;
@@ -13,7 +13,7 @@ interface AdminUser {
 }
 
 interface AdminAuthValue {
-  user: AdminUser | null;
+  user: CurrentAdminUser | null;
   loading: boolean;
   logout: () => Promise<void>;
 }
@@ -21,14 +21,14 @@ interface AdminAuthValue {
 const AdminAuthContext = createContext<AdminAuthValue | null>(null);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AdminUser | null>(null);
+  const [user, setUser] = useState<CurrentAdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
 
-    adminFetch<{ success: true; user: AdminUser }>("/auth/me")
+    adminFetch<{ success: true; user: CurrentAdminUser }>("/auth/me")
       .then((data) => {
         if (!cancelled) setUser(data.user);
       })

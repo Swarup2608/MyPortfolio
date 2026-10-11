@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { ImageUploader } from "@/components/admin/ImageUploader";
-import { MarkdownContent } from "@/components/blog/MarkdownContent";
+import { MarkdownEditor } from "@/components/admin/MarkdownEditor";
 import { adminFetch } from "@/lib/adminApi";
 import { ApiError } from "@/lib/api";
 import type { ApiResponse } from "@/types/api";
@@ -15,11 +16,19 @@ const fieldClass =
 const labelClass = "text-xs font-light uppercase tracking-widest text-foreground/40";
 const cardClass = "rounded-3xl border border-foreground/10 bg-surface p-6";
 
-export function PostForm({ post }: { post?: Post }) {
+interface UploadResponse {
+  success: true;
+  data: { key: string; url: string };
+}
+
+export function PostForm({ post }: { post?: AdminPost }) {
   const router = useRouter();
   const isEdit = Boolean(post);
+  const canPublish = usePermission(PERMISSIONS.POSTS_PUBLISH);
 
   const [title, setTitle] = useState(post?.title ?? "");
+  const [slug, setSlug] = useState(post?.slug ?? "");
+  const [slugTouched, setSlugTouched] = useState(isEdit);
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [content, setContent] = useState(post?.content ?? "");
   const [coverImage, setCoverImage] = useState<CoverImage | null>(post?.coverImage ?? null);
@@ -30,6 +39,28 @@ export function PostForm({ post }: { post?: Post }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  function handleTitleChange(value: string) {
+    setTitle(value);
+    if (!slugTouched) setSlug(slugify(value));
+  }
+
+  function addTag() {
+    const tag = tagInput.trim().toLowerCase();
+    if (!tag || tags.includes(tag)) {
+      setTagInput("");
+      return;
+    }
+    setTags([...tags, tag]);
+    setTagInput("");
+  }
+
+  function handleTagKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addTag();
+    }
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
@@ -37,7 +68,7 @@ export function PostForm({ post }: { post?: Post }) {
 
     try {
       // The image is only uploaded to storage now, at submit time — not when it was picked.
-      let finalCoverImage = coverImage;
+      let finalCoverImage = coverImage ? { url: coverImage, key: coverImageKey, alt: title } : undefined;
       if (coverImageFile) {
         const formData = new FormData();
         formData.append("image", coverImageFile);
@@ -48,8 +79,9 @@ export function PostForm({ post }: { post?: Post }) {
         finalCoverImage = { ...uploaded.data, alt: "" };
       }
 
-      const body = {
+      const contentBody = {
         title,
+        slug,
         excerpt,
         content,
         tags: tags
@@ -77,7 +109,7 @@ export function PostForm({ post }: { post?: Post }) {
           body: JSON.stringify({ ...body, status, coverImage: finalCoverImage ?? undefined }),
         });
       }
-      router.push("/admin");
+      router.push("/admin/posts");
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to save post");
@@ -98,7 +130,7 @@ export function PostForm({ post }: { post?: Post }) {
           </p>
         </div>
         <div className="flex gap-2.5">
-          <Button type="button" variant="secondary" onClick={() => router.push("/admin")}>
+          <Button type="button" variant="secondary" onClick={() => router.push("/admin/posts")}>
             Cancel
           </Button>
           <Button type="submit" disabled={saving}>
@@ -108,6 +140,7 @@ export function PostForm({ post }: { post?: Post }) {
                 : "Saving…"
               : isEdit
                 ? "Save changes"
+                : status === "PUBLISHED"
                 : status === "PUBLISHED"
                   ? "Publish"
                   : "Save draft"}
@@ -128,9 +161,27 @@ export function PostForm({ post }: { post?: Post }) {
               required
               maxLength={200}
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="e.g. How I built my SaaS in a weekend"
               className={`${fieldClass} text-base font-medium`}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="slug" className={labelClass}>
+              Slug
+            </label>
+            <input
+              id="slug"
+              required
+              maxLength={200}
+              value={slug}
+              onChange={(e) => {
+                setSlugTouched(true);
+                setSlug(slugify(e.target.value));
+              }}
+              placeholder="how-i-built-my-saas-in-a-weekend"
+              className={`${fieldClass} font-mono`}
             />
           </div>
 
@@ -150,35 +201,41 @@ export function PostForm({ post }: { post?: Post }) {
           </div>
 
           <div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="content" className={labelClass}>
-                Content (Markdown)
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowPreview((v) => !v)}
-                className="text-xs font-medium uppercase tracking-widest text-accent"
-              >
-                {showPreview ? "Edit" : "Preview"}
-              </button>
-            </div>
-            {showPreview ? (
-              <div className="mt-2 min-h-75 rounded-2xl border border-foreground/15 bg-foreground/5 p-5">
-                <MarkdownContent content={content} />
+            <label className={`${labelClass} mb-2 block`}>Content (Markdown)</label>
+            <MarkdownEditor value={content} onChange={setContent} />
+          </div>
+
+          <div className="rounded-2xl border border-foreground/10 p-5">
+            <div className="mb-3.5 text-sm font-semibold text-foreground">SEO</div>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label htmlFor="seoTitle" className={labelClass}>
+                  SEO title
+                </label>
+                <input
+                  id="seoTitle"
+                  maxLength={200}
+                  value={seoTitle}
+                  onChange={(e) => setSeoTitle(e.target.value)}
+                  placeholder="Defaults to the post title if left blank"
+                  className={fieldClass}
+                />
               </div>
-            ) : (
-              <textarea
-                id="content"
-                required
-                rows={16}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={
-                  "# Heading\n\nWrite your post in Markdown. **Bold**, _italic_, `code`, lists, and [links](https://example.com) all work."
-                }
-                className={`${fieldClass} font-mono leading-relaxed`}
-              />
-            )}
+              <div>
+                <label htmlFor="seoDescription" className={labelClass}>
+                  SEO description
+                </label>
+                <textarea
+                  id="seoDescription"
+                  rows={2}
+                  maxLength={320}
+                  value={seoDescription}
+                  onChange={(e) => setSeoDescription(e.target.value)}
+                  placeholder="Defaults to the excerpt if left blank"
+                  className={fieldClass}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -203,24 +260,71 @@ export function PostForm({ post }: { post?: Post }) {
             <select
               id="status"
               value={status}
-              onChange={(e) => setStatus(e.target.value as PostStatus)}
-              className={fieldClass}
+              disabled={!canPublish}
+              onChange={(e) => setStatus(e.target.value as AdminPostStatus)}
+              className={`${fieldClass} disabled:opacity-50`}
             >
               <option value="DRAFT">Draft</option>
               <option value="PUBLISHED">Published</option>
               <option value="ARCHIVED">Archived</option>
+              <option value="DRAFT">Draft</option>
+              <option value="PUBLISHED">Published</option>
+              <option value="ARCHIVED">Archived</option>
             </select>
+            {!canPublish && (
+              <p className="mt-1.5 text-xs font-light text-foreground/35">
+                You don&apos;t have permission to change publish status.
+              </p>
+            )}
 
-            <label htmlFor="tags" className={`${labelClass} mt-5 block`}>
-              Tags (comma-separated)
+            <label htmlFor="category" className={`${labelClass} mt-5 block`}>
+              Category
             </label>
             <input
-              id="tags"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g. nextjs, mongodb, node"
+              id="category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="e.g. Engineering"
               className={fieldClass}
             />
+
+            <label htmlFor="tagInput" className={`${labelClass} mt-5 block`}>
+              Tags
+            </label>
+            {tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {tags.map((tag) => (
+                  <Badge key={tag} className="gap-1.5 pr-2">
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setTags(tags.filter((t) => t !== tag))}
+                      className="text-foreground/40 hover:text-foreground"
+                      aria-label={`Remove tag ${tag}`}
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 flex gap-2">
+              <input
+                id="tagInput"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                placeholder="Add a tag, press Enter"
+                className={`${fieldClass} mt-0 flex-1`}
+              />
+              <button
+                type="button"
+                onClick={addTag}
+                className="mt-2 rounded-2xl border border-foreground/15 px-4 text-xs font-light text-foreground transition-colors hover:bg-foreground/5"
+              >
+                Add
+              </button>
+            </div>
           </div>
         </div>
       </div>

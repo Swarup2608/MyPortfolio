@@ -75,10 +75,20 @@ function ProjectCard({ project, index }: { project: PublicProject; index: number
           {project.shortDescription}
         </p>
 
-        <div
-          className="mt-6 aspect-16/10 w-full rounded-[26px]"
-          style={{ background: tileGradients[index % tileGradients.length] }}
-        />
+        {project.image?.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={project.image.url}
+            alt={project.image.alt || ""}
+            loading="lazy"
+            className="mt-6 aspect-16/10 w-full rounded-[26px] object-cover"
+          />
+        ) : (
+          <div
+            className="mt-6 aspect-16/10 w-full rounded-[26px]"
+            style={{ background: tileGradients[index % tileGradients.length] }}
+          />
+        )}
       </div>
     </Reveal>
   );

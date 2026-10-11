@@ -64,6 +64,9 @@ export async function updateProject(projectId: string, input: UpdateProjectInput
     if(githubUrl !== undefined) project.githubUrl = githubUrl ?? undefined;
     if(liveUrl !== undefined) project.liveUrl = liveUrl ?? undefined;
     await project.save();
+
+    await cleanupOldImage(previousImageKey, project.image?.key);
+
     return project;
 }
 
@@ -73,7 +76,10 @@ export async function deleteProject(projectId: string){
     if(!project){
         throw new AppError("[project] Project Not Found",404);
     }
+    const imageKey = project.image?.key;
     await project.deleteOne();
+
+    await cleanupOldImage(imageKey, undefined);
 }
 
 export async function changeProjectStatus(projectId: string, projectStatus: "PUBLISHED" | "DRAFT" | "ARCHIVED"){

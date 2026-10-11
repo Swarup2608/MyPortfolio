@@ -2,6 +2,9 @@ import type {Request, Response} from 'express';
 import {Project} from '../models/Project.model.js';
 import {AppError} from '../utils/app-error.js';
 
+const PUBLIC_PROJECT_FIELDS =
+    "title slug shortDescription description image technologies githubUrl liveUrl category featured displayOrder publishedAt";
+
 export async function getPublishedProjects(_req: Request,res: Response): Promise<void>{
     const projects = await Project.find({
         status: "PUBLISHED",

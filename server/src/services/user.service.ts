@@ -85,3 +85,25 @@ export async function updateUserPassword(userId: string, input: UpdateUserPasswo
     }
     return sanitizeUser(user);
 }
+
+// Counts currently-active ADMINs, optionally excluding one user (the target
+// of a deactivate/delete action) so callers can check "would this leave zero".
+export async function countActiveAdmins(excludeUserId?: string){
+    if(excludeUserId){
+        validateObjectId(excludeUserId);
+    }
+    const filter: Record<string, unknown> = { role: "ADMIN", isActive: true };
+    if(excludeUserId){
+        filter._id = { $ne: excludeUserId };
+    }
+    return User.countDocuments(filter);
+}
+
+export async function deleteUser(userId: string){
+    validateObjectId(userId);
+    const user = await User.findByIdAndDelete(userId).lean();
+    if(!user){
+        return null;
+    }
+    return sanitizeUser(user);
+}
