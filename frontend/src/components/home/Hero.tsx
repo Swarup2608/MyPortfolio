@@ -56,7 +56,6 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={PORTRAIT_URL} alt="" className="block w-full" />
         </motion.div>
       </motion.div>
@@ -70,15 +69,40 @@ export function Hero() {
         >
           {siteConfig.tagline}
         </motion.p>
-        <motion.a
-          href="#contact"
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
-          className="gradient-cta inline-flex flex-none items-center justify-center rounded-full px-10 py-4 text-sm font-medium uppercase tracking-widest text-white"
+          className="flex flex-none flex-wrap gap-3"
         >
-          Contact Me
-        </motion.a>
+          <a
+            href="#contact"
+            className="gradient-cta inline-flex items-center justify-center rounded-full px-10 py-4 text-sm font-medium uppercase tracking-widest text-white"
+          >
+            Contact Me
+          </a>
+          {siteConfig.resumeUrl && (
+            <a
+              href={siteConfig.resumeUrl}
+              download
+              className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-foreground/60 bg-background/40 px-8 py-3.5 text-sm font-medium uppercase tracking-widest text-foreground backdrop-blur-sm transition-colors hover:bg-foreground/10"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden
+              >
+                <path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" />
+              </svg>
+              Resume
+            </a>
+          )}
+        </motion.div>
       </Container>
     </section>
   );

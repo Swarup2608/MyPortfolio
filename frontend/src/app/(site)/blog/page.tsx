@@ -4,14 +4,10 @@ import { PostCard } from "@/components/blog/PostCard";
 import { TagFilter } from "@/components/blog/TagFilter";
 import { Pagination } from "@/components/blog/Pagination";
 import { publicFetch } from "@/lib/api";
+import type { ApiResponse } from "@/types/api";
 import type { PostListResponse } from "@/types/post";
 
 export const metadata: Metadata = { title: "Blog" };
-
-interface TagsResponse {
-  success: true;
-  tags: string[];
-}
 
 export default async function BlogPage({
   searchParams,
@@ -26,7 +22,7 @@ export default async function BlogPage({
 
   const [postsData, tagsData] = await Promise.all([
     publicFetch<PostListResponse>(`/posts?${query.toString()}`, { revalidate: 30 }),
-    publicFetch<TagsResponse>("/posts/tags", { revalidate: 60 }),
+    publicFetch<ApiResponse<string[]>>("/posts/tags", { revalidate: 60 }),
   ]);
 
   return (
@@ -40,14 +36,14 @@ export default async function BlogPage({
       </p>
 
       <div className="mt-10 sm:mt-14">
-        <TagFilter tags={tagsData.tags} activeTag={tag} />
+        <TagFilter tags={tagsData.data} activeTag={tag} />
       </div>
 
-      {postsData.posts.length === 0 ? (
+      {postsData.data.length === 0 ? (
         <p className="mt-16 text-center text-foreground/40">No posts yet — check back soon.</p>
       ) : (
         <div className="mt-10 grid gap-x-7 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-          {postsData.posts.map((post) => (
+          {postsData.data.map((post) => (
             <PostCard key={post._id} post={post} />
           ))}
         </div>

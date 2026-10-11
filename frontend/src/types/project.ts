@@ -1,25 +1,34 @@
+import type { ApiResponse } from "./api";
+import type { CoverImage } from "./post";
+
+export type ProjectStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
 export interface Project {
   _id: string;
   title: string;
   slug: string;
   shortDescription: string;
   description: string;
-  image?: { url: string; key: string; alt: string };
+  image?: CoverImage;
   technologies: string[];
   githubUrl?: string;
   liveUrl?: string;
   category?: string;
   featured: boolean;
   displayOrder: number;
-  publishedAt: string | null;
+  status: ProjectStatus;
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface ProjectListResponse {
-  success: true;
-  data: Project[];
-}
+// The public endpoint only returns published projects, without admin fields.
+export type PublicProject = Omit<Project, "status" | "createdAt" | "updatedAt">;
 
-export interface ProjectResponse {
-  success: true;
-  data: Project;
-}
+export type ProjectListResponse = ApiResponse<Project[]>;
+
+export type PublicProjectListResponse = ApiResponse<PublicProject[]>;
+
+export type PublicProjectResponse = ApiResponse<PublicProject>;
+
+export type ProjectResponse = ApiResponse<Project>;

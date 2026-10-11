@@ -20,10 +20,13 @@ export function ContactSection() {
     e.preventDefault();
     setStatus("submitting");
 
-    const form = new FormData(e.currentTarget);
+    // React clears e.currentTarget once the handler yields, so grab the form before awaiting.
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const payload = {
       name: String(form.get("name") || ""),
       email: String(form.get("email") || ""),
+      phone: String(form.get("phone") || "").trim(),
       message: String(form.get("message") || ""),
       website: String(form.get("website") || ""), // honeypot
     };
@@ -39,7 +42,7 @@ export function ContactSection() {
 
       setStatus("success");
       toast.success("Thanks — your message has been sent.");
-      e.currentTarget.reset();
+      formEl.reset();
     } catch (err) {
       setStatus("error");
       const message =
@@ -87,7 +90,14 @@ export function ContactSection() {
                 >
                   Name
                 </label>
-                <input id="name" name="name" required maxLength={120} className={fieldClass} />
+                <input
+                  id="name"
+                  name="name"
+                  required
+                  minLength={2}
+                  maxLength={100}
+                  className={fieldClass}
+                />
               </div>
               <div>
                 <label
@@ -109,6 +119,27 @@ export function ContactSection() {
 
             <div>
               <label
+                htmlFor="phone"
+                className="text-xs font-light uppercase tracking-widest text-foreground/40"
+              >
+                Mobile number <span className="normal-case tracking-normal">(optional)</span>
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={20}
+                pattern="\+?[0-9\s\(\)\-]{7,20}"
+                title="Digits, spaces, +, ( ) and - only"
+                placeholder="+91 98765 43210"
+                className={fieldClass}
+              />
+            </div>
+
+            <div>
+              <label
                 htmlFor="message"
                 className="text-xs font-light uppercase tracking-widest text-foreground/40"
               >
@@ -119,6 +150,7 @@ export function ContactSection() {
                 name="message"
                 required
                 rows={5}
+                minLength={10}
                 maxLength={5000}
                 className={fieldClass}
               />

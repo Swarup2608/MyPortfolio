@@ -38,14 +38,14 @@ export interface IPost extends Document{
 const postSchema = new Schema<IPost>({
     title: {type: String, required: true, trim: true, minlength: 3, maxlength: 200},
     slug: {type:String, required: true, trim:true, lowercase: true,index:true, unique:true},
-    excerpt: {type: String, required:true,trim:true, maxlength:500},
+    excerpt: {type: String, trim:true, maxlength:500, default: ""},
     content: {type: String, required:true},
     coverImage:{
         url: {type: String, trim: true},
         key: {type: String, trim: true},
         alt: {type: String, trim: true, maxlength: 200}
     },
-    tags:{ type: [String], defualt: [] },
+    tags:{ type: [String], default: [] },
     category: {type: String,trim: true, maxlength: 100},
     author: {type: Schema.Types.ObjectId,ref:"User",required: true, index:true},
     status: {type: String, enum: POST_STATUSES,default:"DRAFT",index:true},
@@ -53,7 +53,7 @@ const postSchema = new Schema<IPost>({
     seo:{
         title:{type: String, trim: true, maxlength: 200},
         description: {type: String, trim: true, maxlength: 320},
-        keywords: {type:[String],defualt:[]}
+        keywords: {type:[String],default:[]}
     },
     readingTimeInMinutes: {type: Number,default:1,min:1},
     viewCount: {type:Number,default:0, min:0}

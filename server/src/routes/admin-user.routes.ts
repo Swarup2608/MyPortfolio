@@ -3,8 +3,8 @@ import { Router } from "express";
 import { getUserByIDController, getUsersController, createAdminUser, updateAdminUser, updateAdminUserStatus, updateAdminUserPassword, deleteAdminUser } from "../controllers/admin-user.controller.js";
 
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { requirePermission } from "../middleware/permission.middleware.js";
 import { requireCsrf } from "../middleware/csrf.middleware.js";
+import { requirePermission } from "../middleware/permission.middleware.js";
 import { validateBody } from "../middleware/validate.middleware.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { PERMISSIONS } from "../config/permissions.js";

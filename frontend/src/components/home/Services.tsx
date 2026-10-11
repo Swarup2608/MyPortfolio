@@ -16,7 +16,7 @@ export function Services() {
         transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
         className="mb-[clamp(60px,8vw,112px)] text-center text-[clamp(3rem,12vw,160px)] font-black uppercase leading-[0.9] tracking-[-.03em] text-[#0C0C0C]"
       >
-        Services
+        Expertise
       </motion.h2>
 
       <div className="mx-auto max-w-[1024px]">

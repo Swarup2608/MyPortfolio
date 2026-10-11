@@ -2,28 +2,21 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { trackPageView } from "@/lib/analytics";
+import { track } from "@/lib/analytics";
 
-// Routes this generic tracker must stay out of:
-//  - /admin/*     — the root layout also wraps the CMS, and admin usage is
-//                    the site owner operating the tool, not visitor traffic.
-//  - /blog/[slug] — has its own BlogViewTracker that attaches postId; firing
-//                    both here would double-count the view (see BlogViewTracker).
-function isExcludedPath(pathname: string): boolean {
-  if (pathname.startsWith("/admin")) return true;
-  if (/^\/blog\/[^/]+$/.test(pathname)) return true;
-  return false;
-}
+let lastTracked = { path: "", at: 0 };
 
+// Records one page view per navigation. Admin pages aren't counted.
 export function PageViewTracker() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!pathname || isExcludedPath(pathname)) return;
-
-    void trackPageView({ path: pathname }).catch(() => {
-      // Analytics must never break the website.
-    });
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) return;
+    // Strict Mode runs effects twice in development; don't count that as two views.
+    const now = Date.now();
+    if (lastTracked.path === pathname && now - lastTracked.at < 1000) return;
+    lastTracked = { path: pathname, at: now };
+    track({ type: "PAGE_VIEW", path: pathname });
   }, [pathname]);
 
   return null;

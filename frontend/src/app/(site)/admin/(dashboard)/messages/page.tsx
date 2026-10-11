@@ -1,17 +1,47 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { formatDate } from "@/lib/utils";
 import { adminFetch } from "@/lib/adminApi";
+import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useDialog } from "@/components/ui/Dialog";
 import { usePermission } from "@/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/permissions";
-import type { AdminContact, ContactStatus } from "@/types/admin";
+import type { PaginatedResponse } from "@/types/api";
 
-interface MessagesResponse {
-  success: true;
-  data: AdminContact[];
+type ContactStatus = "NEW" | "READ" | "ARCHIVED";
+
+interface ContactMessage {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject?: string;
+  message: string;
+  status: ContactStatus;
+  createdAt: string;
 }
+
+const isUnread = (m: ContactMessage) => m.status === "NEW";
+
+const VIEWS = [
+  { key: "inbox", label: "Inbox" },
+  { key: "unread", label: "Unread" },
+  { key: "archived", label: "Archived" },
+] as const;
+
+type ViewKey = (typeof VIEWS)[number]["key"];
+
+function inView(m: ContactMessage, view: ViewKey) {
+  if (view === "archived") return m.status === "ARCHIVED";
+  if (view === "unread") return m.status === "NEW";
+  return m.status !== "ARCHIVED";
+}
+
+const actionClass =
+  "text-xs font-medium uppercase tracking-widest transition-colors disabled:opacity-40";
 
 const DATE_RANGES = [
   { key: "all", label: "All time" },
@@ -20,19 +50,15 @@ const DATE_RANGES = [
   { key: "90", label: "90 days" },
 ] as const;
 
-const STATUS_FILTERS: { key: "ALL" | ContactStatus; label: string }[] = [
-  { key: "ALL", label: "All" },
-  { key: "NEW", label: "New" },
-  { key: "READ", label: "Read" },
-  { key: "ARCHIVED", label: "Archived" },
-];
-
 type DateRangeKey = (typeof DATE_RANGES)[number]["key"] | "custom";
 type SortOrder = "newest" | "oldest";
 
 export default function AdminMessagesPage() {
-  const [messages, setMessages] = useState<AdminContact[] | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"ALL" | ContactStatus>("ALL");
+  const [messages, setMessages] = useState<ContactMessage[] | null>(null);
+  const [error, setError] = useState("");
+  const [view, setView] = useState<ViewKey>("inbox");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const dialog = useDialog();
   const [dateRange, setDateRange] = useState<DateRangeKey>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [now, setNow] = useState<number | null>(null);
@@ -57,29 +83,53 @@ export default function AdminMessagesPage() {
   }, [showCustom]);
 
   function load() {
-    adminFetch<MessagesResponse>("/admin/contact").then((data) =>
-      setMessages(data.data)
-    );
+    adminFetch<PaginatedResponse<ContactMessage>>("/admin/contact?limit=50")
+      .then((data) => setMessages(data.data))
+      .catch((err) =>
+        setError(err instanceof ApiError ? err.message : "Failed to load messages")
+      );
   }
 
   useEffect(load, []);
 
-  // Opening/viewing a message isn't the same as acknowledging it, so status
-  // only ever changes via an explicit action, never automatically.
-  async function changeStatus(id: string, status: ContactStatus) {
-    await adminFetch(`/admin/contact/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
+  async function changeStatus(m: ContactMessage, status: ContactStatus, successText?: string) {
+    setPendingId(m._id);
+    try {
+      await adminFetch(`/admin/contact/${m._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      setMessages((prev) => prev && prev.map((x) => (x._id === m._id ? { ...x, status } : x)));
+      if (successText) toast.success(successText);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't update the message");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleDelete(m: ContactMessage) {
+    const deleted = await dialog.confirm({
+      tone: "danger",
+      title: "Delete this message?",
+      message: (
+        <>
+          The message from <span className="font-normal text-foreground/80">{m.name}</span> will
+          be permanently removed. This cannot be undone.
+        </>
+      ),
+      confirmText: "Delete",
+      onConfirm: () => adminFetch(`/admin/contact/${m._id}`, { method: "DELETE" }),
     });
-    load();
+    if (!deleted) return;
+    setMessages((prev) => prev && prev.filter((x) => x._id !== m._id));
+    toast.success("Message deleted");
   }
 
   const filtered = useMemo(() => {
     if (!messages) return [];
 
-    let list = messages;
-
-    if (statusFilter !== "ALL") list = list.filter((m) => m.status === statusFilter);
+    let list = messages.filter((m) => inView(m, view));
 
     if (dateRange === "custom") {
       const fromTime = appliedFrom ? new Date(`${appliedFrom}T00:00:00`).getTime() : -Infinity;
@@ -97,9 +147,17 @@ export default function AdminMessagesPage() {
       const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       return sortOrder === "newest" ? -diff : diff;
     });
-  }, [messages, statusFilter, dateRange, sortOrder, now, appliedFrom, appliedTo]);
+  }, [messages, view, dateRange, sortOrder, now, appliedFrom, appliedTo]);
 
-  const newCount = messages?.filter((m) => m.status === "NEW").length ?? 0;
+  const counts = useMemo(
+    () => ({
+      inbox: messages?.filter((m) => inView(m, "inbox")).length ?? 0,
+      unread: messages?.filter((m) => inView(m, "unread")).length ?? 0,
+      archived: messages?.filter((m) => inView(m, "archived")).length ?? 0,
+    }),
+    [messages]
+  );
+  const newCount = counts.unread;
 
   return (
     <div>
@@ -108,7 +166,25 @@ export default function AdminMessagesPage() {
         {newCount} new message{newCount === 1 ? "" : "s"} — submissions from the contact form.
       </p>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2.5">
+      <div className="mt-6 inline-flex rounded-full border border-foreground/15 p-1">
+        {VIEWS.map((v) => (
+          <button
+            key={v.key}
+            onClick={() => setView(v.key)}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-xs font-light transition-colors",
+              view === v.key
+                ? "bg-accent-soft text-accent"
+                : "text-foreground/55 hover:text-foreground/80"
+            )}
+          >
+            {v.label}
+            {counts[v.key] > 0 && <span className="ml-1.5 opacity-70">{counts[v.key]}</span>}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
         <div className="flex gap-1.5">
           {DATE_RANGES.map((r) => (
             <button
@@ -204,23 +280,6 @@ export default function AdminMessagesPage() {
           )}
         </div>
 
-        <div className="flex gap-1.5">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setStatusFilter(f.key)}
-              className={cn(
-                "rounded-full border px-4 py-2 text-xs font-light transition-colors",
-                statusFilter === f.key
-                  ? "border-accent bg-accent-soft text-accent"
-                  : "border-foreground/15 text-foreground/55 hover:bg-foreground/5"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value as SortOrder)}
@@ -231,75 +290,106 @@ export default function AdminMessagesPage() {
         </select>
       </div>
 
-      {!messages && <p className="mt-6 text-foreground/40">Loading…</p>}
+      {error && <p className="mt-6 text-sm text-red-400">{error}</p>}
+      {!error && !messages && <p className="mt-6 text-foreground/40">Loading…</p>}
       {messages && filtered.length === 0 && (
         <p className="mt-6 text-foreground/40">
-          {messages.length === 0 ? "No messages yet." : "No messages match these filters."}
+          {messages.length === 0
+            ? "No messages yet."
+            : view === "archived" && counts.archived === 0
+              ? "No archived messages."
+              : "No messages match these filters."}
         </p>
       )}
 
       <div className="mt-7 space-y-3.5">
-        {filtered.map((m) => (
-          <div
-            key={m._id}
-            className={cn(
-              "rounded-2xl border border-foreground/10 p-6",
-              m.status === "NEW" ? "bg-accent-soft" : "bg-surface"
-            )}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                {m.subject && <p className="text-sm font-medium text-foreground">{m.subject}</p>}
-                <p className="font-medium text-foreground">{m.name}</p>
-                <a href={`mailto:${m.email}`} className="text-sm text-accent">
-                  {m.email}
-                </a>
-              </div>
-              <div className="flex items-center gap-4">
+        {filtered.map((m) => {
+          const busy = pendingId === m._id;
+          return (
+            <div
+              key={m._id}
+              className={cn(
+                "rounded-2xl border border-foreground/10 p-5 sm:p-6",
+                isUnread(m) ? "bg-accent-soft" : "bg-surface"
+              )}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1.5">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 font-medium text-foreground">
+                    {isUnread(m) && (
+                      <span className="size-2 flex-none rounded-full bg-accent" aria-label="Unread" />
+                    )}
+                    {m.name}
+                  </p>
+                  <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
+                    <a href={`mailto:${m.email}`} className="break-all text-accent">
+                      {m.email}
+                    </a>
+                    {m.phone && (
+                      <a href={`tel:${m.phone.replace(/[^\d+]/g, "")}`} className="text-accent">
+                        {m.phone}
+                      </a>
+                    )}
+                  </div>
+                </div>
                 <span className="text-xs font-light text-foreground/40">
                   {formatDate(m.createdAt)}
                 </span>
-                <a
-                  href={`mailto:${m.email}?subject=${encodeURIComponent(`Re: ${m.subject || "Your message"}`)}`}
-                  className="text-xs font-medium uppercase tracking-widest text-foreground/55 hover:text-foreground"
-                >
-                  Reply
-                </a>
-                {canUpdate && (
-                  <div className="flex items-center gap-3">
-                    {m.status !== "READ" && (
-                      <button
-                        onClick={() => changeStatus(m._id, "READ")}
-                        className="text-xs font-medium uppercase tracking-widest text-accent"
-                      >
-                        Mark read
-                      </button>
-                    )}
-                    {m.status !== "ARCHIVED" && (
-                      <button
-                        onClick={() => changeStatus(m._id, "ARCHIVED")}
-                        className="text-xs font-medium uppercase tracking-widest text-foreground/55 hover:text-foreground"
-                      >
-                        Archive
-                      </button>
-                    )}
-                    {m.status !== "NEW" && (
-                      <button
-                        onClick={() => changeStatus(m._id, "NEW")}
-                        className="text-xs font-medium uppercase tracking-widest text-foreground/55 hover:text-foreground"
-                      >
-                        Mark new
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
+
+              <p className="mt-3.5 whitespace-pre-wrap wrap-break-word text-sm font-light leading-relaxed text-foreground/55">
+                {m.message}
+              </p>
+
+              {canUpdate && (
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-foreground/8 pt-3.5">
+                {m.status === "NEW" && (
+                  <button
+                    onClick={() => changeStatus(m, "READ")}
+                    disabled={busy}
+                    className={cn(actionClass, "text-accent")}
+                  >
+                    Mark as read
+                  </button>
+                )}
+                {m.status === "READ" && (
+                  <button
+                    onClick={() => changeStatus(m, "NEW")}
+                    disabled={busy}
+                    className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                  >
+                    Mark as unread
+                  </button>
+                )}
+                {m.status === "ARCHIVED" ? (
+                  <button
+                    onClick={() => changeStatus(m, "READ", "Moved back to inbox")}
+                    disabled={busy}
+                    className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                  >
+                    Unarchive
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => changeStatus(m, "ARCHIVED", "Message archived")}
+                    disabled={busy}
+                    className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                  >
+                    Archive
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(m)}
+                  disabled={busy}
+                  className={cn(actionClass, "text-red-400 hover:text-red-300")}
+                >
+                  Delete
+                </button>
+              </div>
+              )}
             </div>
-            <p className="mt-3.5 whitespace-pre-wrap text-sm font-light leading-relaxed text-foreground/55">
-              {m.message}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

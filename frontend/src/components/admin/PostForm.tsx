@@ -78,7 +78,7 @@ export function PostForm({ post }: { post?: AdminPost }) {
       if (coverImageFile) {
         const formData = new FormData();
         formData.append("image", coverImageFile);
-        const uploaded = await adminFetch<UploadResponse>("/admin/uploads", {
+        const uploaded = await adminFetch<UploadResponse>("/admin/media", {
           method: "POST",
           body: formData,
         });
@@ -103,9 +103,10 @@ export function PostForm({ post }: { post?: AdminPost }) {
       if (isEdit && post) {
         // The update endpoint doesn't accept status changes — that's a
         // separate call so an editor can't slip a publish through a normal save.
+        // coverImage: null tells the server to remove the existing image.
         await adminFetch(`/admin/posts/${post._id}`, {
           method: "PATCH",
-          body: JSON.stringify(contentBody),
+          body: JSON.stringify({ ...contentBody, coverImage: finalCoverImage ?? null }),
         });
         if (status !== post.status) {
           await adminFetch(`/admin/posts/${post._id}/status`, {
@@ -201,7 +202,7 @@ export function PostForm({ post }: { post?: AdminPost }) {
             <textarea
               id="excerpt"
               rows={2}
-              maxLength={400}
+              maxLength={500}
               value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
               placeholder="A one or two sentence summary shown on the blog list page"

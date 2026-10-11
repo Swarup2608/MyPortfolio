@@ -1,23 +1,24 @@
 import multer from "multer";
 import { AppError } from "../utils/app-error.js";
 
-const ALLOWED_MIME_TYPES = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/avif"
-];
+export const ALLOWED_IMAGE_TYPES: Record<string, string> = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+};
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
+// Single "image" field, held in memory and handed to the storage driver by the controller.
 export const uploadImage = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: MAX_FILE_SIZE, files: 1 },
-    fileFilter: (_req, file, callback) => {
-        if (!ALLOWED_MIME_TYPES.includes(file.mimetype as never)) {
-            callback(new AppError("[validation] Invalid file type. Only JPEG, PNG, WebP, and AVIF are allowed.", 400));
+    limits: { fileSize: MAX_IMAGE_SIZE_BYTES, files: 1 },
+    fileFilter: (_req, file, cb) => {
+        if (!ALLOWED_IMAGE_TYPES[file.mimetype]) {
+            cb(new AppError("[media] Only JPEG, PNG, WEBP or GIF images are allowed", 400));
             return;
         }
-        callback(null, true);
-    }
-    })
+        cb(null, true);
+    },
+}).single("image");

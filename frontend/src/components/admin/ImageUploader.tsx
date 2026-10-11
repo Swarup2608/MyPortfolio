@@ -50,7 +50,6 @@ export function ImageUploader({
   return (
     <div>
       {displayUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={displayUrl}
           alt=""
@@ -95,7 +94,7 @@ export function ImageUploader({
 
       {file && !error && (
         <p className="mt-2.5 text-xs font-light text-foreground/40">
-          Selected — will upload when you save the post.
+          Selected — will upload when you save.
         </p>
       )}
       {error && <p className="mt-2.5 text-sm text-red-400">{error}</p>}

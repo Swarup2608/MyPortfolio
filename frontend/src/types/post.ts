@@ -1,4 +1,14 @@
+import type { ApiResponse, PaginatedResponse } from "./api";
+
+export type { Pagination } from "./api";
+
 export type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+export interface CoverImage {
+  url: string;
+  key: string;
+  alt: string;
+}
 
 export interface Post {
   _id: string;
@@ -6,39 +16,24 @@ export interface Post {
   slug: string;
   excerpt: string;
   content: string;
-  coverImage: string;
+  coverImage?: CoverImage;
   tags: string[];
+  category?: string;
   status: PostStatus;
   author?: { _id: string; name: string } | string;
-  publishedAt: string | null;
-  readingTimeMinutes: number;
-  views: number;
-  seoTitle?: string;
-  seoDescription?: string;
-  seoKeywords?: string[];
+  publishedAt?: string | null;
+  readingTimeInMinutes: number;
+  viewCount: number;
+  seo?: { title?: string; description?: string; keywords?: string[] };
   createdAt: string;
   updatedAt: string;
 }
 
 export type PostListItem = Pick<
   Post,
-  "_id" | "title" | "slug" | "excerpt" | "coverImage" | "tags" | "publishedAt" | "readingTimeMinutes"
-> & { status?: PostStatus; views?: number; createdAt?: string; updatedAt?: string };
+  "_id" | "title" | "slug" | "excerpt" | "coverImage" | "tags" | "publishedAt" | "readingTimeInMinutes"
+> & { status?: PostStatus; viewCount?: number; createdAt?: string; updatedAt?: string };
 
-export interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-}
+export type PostListResponse = PaginatedResponse<PostListItem>;
 
-export interface PostListResponse {
-  success: true;
-  posts: PostListItem[];
-  pagination: Pagination;
-}
-
-export interface PostResponse {
-  success: true;
-  post: Post;
-}
+export type PostResponse = ApiResponse<Post>;

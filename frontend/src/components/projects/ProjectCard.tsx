@@ -6,7 +6,6 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link href={`/projects/${project.slug}`} className="group block">
       {project.image?.url ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={project.image.url}
           alt={project.image.alt || ""}

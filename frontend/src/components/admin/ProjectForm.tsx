@@ -4,50 +4,35 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { MarkdownContent } from "@/components/blog/MarkdownContent";
 import { adminFetch } from "@/lib/adminApi";
 import { ApiError } from "@/lib/api";
-import { slugify } from "@/lib/utils";
-import { usePermission } from "@/hooks/usePermission";
-import { PERMISSIONS } from "@/lib/permissions";
-import type { AdminProject, AdminProjectStatus } from "@/types/admin";
+import type { ApiResponse } from "@/types/api";
+import type { CoverImage } from "@/types/post";
+import type { Project, ProjectStatus } from "@/types/project";
 
 const fieldClass =
   "mt-2 w-full rounded-2xl border border-foreground/15 bg-foreground/5 px-4 py-3.5 text-sm text-foreground outline-none transition-colors focus:border-accent";
 const labelClass = "text-xs font-light uppercase tracking-widest text-foreground/40";
 const cardClass = "rounded-3xl border border-foreground/10 bg-surface p-6";
 
-interface UploadResponse {
-  success: true;
-  data: { key: string; url: string };
-}
-
-export function ProjectForm({ project }: { project?: AdminProject }) {
+export function ProjectForm({ project }: { project?: Project }) {
   const router = useRouter();
   const isEdit = Boolean(project);
-  const canPublish = usePermission(PERMISSIONS.PROJECTS_PUBLISH);
 
   const [title, setTitle] = useState(project?.title ?? "");
-  const [slug, setSlug] = useState(project?.slug ?? "");
-  const [slugTouched, setSlugTouched] = useState(isEdit);
   const [shortDescription, setShortDescription] = useState(project?.shortDescription ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
-  const [image, setImage] = useState(project?.image?.url ?? "");
-  const [imageKey, setImageKey] = useState(project?.image?.key ?? "");
+  const [image, setImage] = useState<CoverImage | null>(project?.image ?? null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [technologies, setTechnologies] = useState((project?.technologies ?? []).join(", "));
-  const [githubUrl, setGithubUrl] = useState(project?.githubUrl ?? "");
   const [liveUrl, setLiveUrl] = useState(project?.liveUrl ?? "");
-  const [category, setCategory] = useState(project?.category ?? "");
-  const [featured, setFeatured] = useState(project?.featured ?? false);
-  const [displayOrder, setDisplayOrder] = useState(project?.displayOrder ?? 0);
-  const [status, setStatus] = useState<AdminProjectStatus>(project?.status ?? "DRAFT");
+  const [githubUrl, setGithubUrl] = useState(project?.githubUrl ?? "");
+  const [displayOrder, setDisplayOrder] = useState(String(project?.displayOrder ?? 0));
+  const [status, setStatus] = useState<ProjectStatus>(project?.status ?? "DRAFT");
+  const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  function handleTitleChange(value: string) {
-    setTitle(value);
-    if (!slugTouched) setSlug(slugify(value));
-  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -55,57 +40,59 @@ export function ProjectForm({ project }: { project?: AdminProject }) {
     setError("");
 
     try {
-      let finalImage = image ? { url: image, key: imageKey, alt: title } : undefined;
+      // The image is only uploaded to storage now, at submit time — not when it was picked.
+      let finalImage = image;
       if (imageFile) {
         const formData = new FormData();
         formData.append("image", imageFile);
-        const uploaded = await adminFetch<UploadResponse>("/admin/uploads", {
-          method: "POST",
-          body: formData,
-        });
-        finalImage = { url: uploaded.data.url, key: uploaded.data.key, alt: title };
+        const uploaded = await adminFetch<ApiResponse<{ url: string; key: string }>>(
+          "/admin/media",
+          { method: "POST", body: formData }
+        );
+        finalImage = { ...uploaded.data, alt: "" };
       }
 
-      const contentBody = {
+      const body = {
         title,
-        slug,
         shortDescription,
         description,
-        image: finalImage,
         technologies: technologies
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
-        githubUrl: githubUrl || undefined,
-        liveUrl: liveUrl || undefined,
-        category: category || undefined,
-        featured,
-        displayOrder,
+        displayOrder: Number(displayOrder) || 0,
       };
 
-      let id = project?._id;
       if (isEdit && project) {
+        // null tells the server to remove the existing image or link.
         await adminFetch(`/admin/projects/${project._id}`, {
           method: "PATCH",
-          body: JSON.stringify(contentBody),
+          body: JSON.stringify({
+            ...body,
+            image: finalImage,
+            liveUrl: liveUrl.trim() || null,
+            githubUrl: githubUrl.trim() || null,
+          }),
         });
+        // Publishing is a separate permission on the server, so status has its own endpoint.
+        if (status !== project.status) {
+          await adminFetch(`/admin/projects/${project._id}/status`, {
+            method: "PATCH",
+            body: JSON.stringify({ status }),
+          });
+        }
       } else {
-        const created = await adminFetch<{ success: true; data: AdminProject }>("/admin/projects", {
+        await adminFetch("/admin/projects", {
           method: "POST",
-          body: JSON.stringify(contentBody),
-        });
-        id = created.data._id;
-      }
-
-      // Projects always start as DRAFT server-side — publish/archive is a
-      // separate call so the status can't be slipped through a normal save.
-      if (id && status !== (project?.status ?? "DRAFT")) {
-        await adminFetch(`/admin/projects/${id}/status`, {
-          method: "PATCH",
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({
+            ...body,
+            status,
+            image: finalImage ?? undefined,
+            liveUrl: liveUrl.trim() || undefined,
+            githubUrl: githubUrl.trim() || undefined,
+          }),
         });
       }
-
       router.push("/admin/projects");
       router.refresh();
     } catch (err) {
@@ -123,7 +110,9 @@ export function ProjectForm({ project }: { project?: AdminProject }) {
             {isEdit ? "Edit project" : "New project"}
           </h1>
           <p className="mt-1.5 text-sm font-light text-foreground/40">
-            {isEdit ? "Update this project and save your changes." : "Add a new portfolio project."}
+            {isEdit
+              ? "Update this project and save your changes."
+              : "Add a project to the Projects section of your site."}
           </p>
         </div>
         <div className="flex gap-2.5">
@@ -131,7 +120,15 @@ export function ProjectForm({ project }: { project?: AdminProject }) {
             Cancel
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? (imageFile ? "Uploading image…" : "Saving…") : isEdit ? "Save changes" : "Create project"}
+            {saving
+              ? imageFile
+                ? "Uploading image…"
+                : "Saving…"
+              : isEdit
+                ? "Save changes"
+                : status === "PUBLISHED"
+                  ? "Publish"
+                  : "Save draft"}
           </Button>
         </div>
       </div>
@@ -147,29 +144,12 @@ export function ProjectForm({ project }: { project?: AdminProject }) {
             <input
               id="title"
               required
+              minLength={2}
               maxLength={200}
               value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="e.g. Portfolio CMS"
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Feature Pulse"
               className={`${fieldClass} text-base font-medium`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="slug" className={labelClass}>
-              Slug
-            </label>
-            <input
-              id="slug"
-              required
-              maxLength={200}
-              value={slug}
-              onChange={(e) => {
-                setSlugTouched(true);
-                setSlug(slugify(e.target.value));
-              }}
-              placeholder="portfolio-cms"
-              className={`${fieldClass} font-mono`}
             />
           </div>
 
@@ -180,71 +160,58 @@ export function ProjectForm({ project }: { project?: AdminProject }) {
             <textarea
               id="shortDescription"
               required
-              rows={2}
+              rows={3}
               maxLength={300}
               value={shortDescription}
               onChange={(e) => setShortDescription(e.target.value)}
-              placeholder="A one or two sentence summary shown on project cards"
+              placeholder="One or two sentences shown on the project card on the home page"
               className={fieldClass}
             />
           </div>
 
           <div>
-            <label htmlFor="description" className={labelClass}>
-              Description
-            </label>
-            <textarea
-              id="description"
-              required
-              rows={12}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Full project write-up"
-              className={`${fieldClass} leading-relaxed`}
-            />
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label htmlFor="githubUrl" className={labelClass}>
-                GitHub URL
+            <div className="flex items-center justify-between">
+              <label htmlFor="description" className={labelClass}>
+                Full description (Markdown)
               </label>
-              <input
-                id="githubUrl"
-                type="url"
-                value={githubUrl}
-                onChange={(e) => setGithubUrl(e.target.value)}
-                placeholder="https://github.com/…"
-                className={fieldClass}
-              />
+              <button
+                type="button"
+                onClick={() => setShowPreview((v) => !v)}
+                className="text-xs font-medium uppercase tracking-widest text-accent"
+              >
+                {showPreview ? "Edit" : "Preview"}
+              </button>
             </div>
-            <div>
-              <label htmlFor="liveUrl" className={labelClass}>
-                Live URL
-              </label>
-              <input
-                id="liveUrl"
-                type="url"
-                value={liveUrl}
-                onChange={(e) => setLiveUrl(e.target.value)}
-                placeholder="https://…"
-                className={fieldClass}
+            {showPreview ? (
+              <div className="mt-2 min-h-75 rounded-2xl border border-foreground/15 bg-foreground/5 p-5">
+                <MarkdownContent content={description} />
+              </div>
+            ) : (
+              <textarea
+                id="description"
+                required
+                rows={16}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={
+                  "## The problem\n\nWhat the project solves, what you built, the tech stack and what you learned."
+                }
+                className={`${fieldClass} font-mono leading-relaxed`}
               />
-            </div>
+            )}
           </div>
         </div>
 
         <div className="flex flex-col gap-4.5">
           <div className={cardClass}>
-            <div className="mb-4 text-sm font-semibold text-foreground">Image</div>
+            <div className="mb-4 text-sm font-semibold text-foreground">Project image</div>
             <ImageUploader
-              existingUrl={image}
+              existingUrl={image?.url ?? ""}
               file={imageFile}
               onFileSelected={setImageFile}
               onRemove={() => {
                 setImageFile(null);
-                setImage("");
-                setImageKey("");
+                setImage(null);
               }}
             />
           </div>
@@ -256,19 +223,13 @@ export function ProjectForm({ project }: { project?: AdminProject }) {
             <select
               id="status"
               value={status}
-              disabled={!canPublish}
-              onChange={(e) => setStatus(e.target.value as AdminProjectStatus)}
-              className={`${fieldClass} disabled:opacity-50`}
+              onChange={(e) => setStatus(e.target.value as ProjectStatus)}
+              className={fieldClass}
             >
               <option value="DRAFT">Draft</option>
               <option value="PUBLISHED">Published</option>
               <option value="ARCHIVED">Archived</option>
             </select>
-            {!canPublish && (
-              <p className="mt-1.5 text-xs font-light text-foreground/35">
-                You don&apos;t have permission to change publish status.
-              </p>
-            )}
 
             <label htmlFor="technologies" className={`${labelClass} mt-5 block`}>
               Technologies (comma-separated)
@@ -277,42 +238,48 @@ export function ProjectForm({ project }: { project?: AdminProject }) {
               id="technologies"
               value={technologies}
               onChange={(e) => setTechnologies(e.target.value)}
-              placeholder="e.g. Next.js, MongoDB, Node"
-              className={fieldClass}
-            />
-
-            <label htmlFor="category" className={`${labelClass} mt-5 block`}>
-              Category
-            </label>
-            <input
-              id="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g. Web app"
+              placeholder="e.g. MERN Stack, Python, AI"
               className={fieldClass}
             />
 
             <label htmlFor="displayOrder" className={`${labelClass} mt-5 block`}>
-              Display order
+              Display order (lowest first)
             </label>
             <input
               id="displayOrder"
               type="number"
               min={0}
+              step={1}
               value={displayOrder}
-              onChange={(e) => setDisplayOrder(Number(e.target.value))}
+              onChange={(e) => setDisplayOrder(e.target.value)}
+              className={fieldClass}
+            />
+          </div>
+
+          <div className={cardClass}>
+            <label htmlFor="liveUrl" className={labelClass}>
+              Live URL
+            </label>
+            <input
+              id="liveUrl"
+              type="url"
+              value={liveUrl}
+              onChange={(e) => setLiveUrl(e.target.value)}
+              placeholder="https://"
               className={fieldClass}
             />
 
-            <label className="mt-5 flex items-center gap-2.5 text-sm font-light text-foreground/85">
-              <input
-                type="checkbox"
-                checked={featured}
-                onChange={(e) => setFeatured(e.target.checked)}
-                className="h-4 w-4 rounded border-foreground/25"
-              />
-              Featured
+            <label htmlFor="githubUrl" className={`${labelClass} mt-5 block`}>
+              GitHub URL
             </label>
+            <input
+              id="githubUrl"
+              type="url"
+              value={githubUrl}
+              onChange={(e) => setGithubUrl(e.target.value)}
+              placeholder="https://github.com/"
+              className={fieldClass}
+            />
           </div>
         </div>
       </div>

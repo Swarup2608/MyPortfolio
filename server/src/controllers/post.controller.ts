@@ -1,5 +1,6 @@
 import type {Response} from "express";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
+import type { AdminListQuery } from "../schemas/list-query.schema.js";
 import { createPost,getPostById, getPosts, deletePost, updatePost, changePostStatus } from "../services/post.service.js";
 import { createAuditLog } from "../services/audit.service.js";
 
@@ -14,9 +15,9 @@ export async function createPostController(req: AuthenticatedRequest, res: Respo
     res.status(201).json({success:true, data:post});
 }
 
-export async function getPostsController(req:AuthenticatedRequest,res:Response) : Promise<void> {
-    const posts = await getPosts();
-    res.status(200).json({success:true,data:posts,});
+export async function getPostsController(_req:AuthenticatedRequest,res:Response) : Promise<void> {
+    const { posts, pagination } = await getPosts(res.locals.query as AdminListQuery);
+    res.status(200).json({success:true,data:posts,pagination});
 }
 
 export async function getPostController(req: AuthenticatedRequest & {params: PostParams}, res: Response) : Promise<void>{

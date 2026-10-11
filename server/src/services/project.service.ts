@@ -3,26 +3,33 @@ import type { createProjectInput } from '../schemas/project.schema.js';
 import type { UpdateProjectInput } from '../schemas/project-update.schema.js';
 import {AppError} from '../utils/app-error.js';
 import { validateObjectId } from '../utils/object-id.js';
-import { deleteImageIfUnused } from './storage.service.js';
+import { slugify } from '../utils/slugify.js';
 
-// R2 cleanup must never break the request that triggered it — the DB write
-// already succeeded, so a storage hiccup should just leave an orphaned file
-// for later cleanup rather than surface as a failure to the caller.
-async function cleanupOldImage(oldKey?: string, newKey?: string) {
-    if (!oldKey || oldKey === newKey) return;
-    try {
-        await deleteImageIfUnused(oldKey);
-    } catch (error) {
-        console.error(`[project] Failed to clean up old image "${oldKey}":`, error);
+async function uniqueSlugFromTitle(title: string): Promise<string> {
+    const base = slugify(title) || "project";
+    let slug = base;
+    for (let suffix = 2; await Project.exists({ slug }); suffix++) {
+        slug = `${base}-${suffix}`;
     }
+    return slug;
 }
 
 export  async function createProject(input: createProjectInput){
-    const existingProject = await Project.findOne({slug: input.slug});
-    if(existingProject){
-        throw new AppError("[project] Project already exists with this slug", 409);
+    let slug: string;
+    if(input.slug){
+        const existingProject = await Project.findOne({slug: input.slug});
+        if(existingProject){
+            throw new AppError("[project] Project already exists with this slug", 409);
+        }
+        slug = input.slug;
+    }else{
+        slug = await uniqueSlugFromTitle(input.title);
     }
-    return Project.create({...input, status: "DRAFT"});
+    return Project.create({
+        ...input,
+        slug,
+        ...(input.status === "PUBLISHED" ? { publishedAt: new Date() } : {}),
+    });
 }
 
 export async function getProjects(){
@@ -50,12 +57,13 @@ export async function updateProject(projectId: string, input: UpdateProjectInput
             throw new AppError("[project] Project with this slug already exists",409);
         }
     }
-    const previousImageKey = project.image?.key;
-    Object.assign(project, input);
+    const { image, githubUrl, liveUrl, ...fields } = input;
+    Object.assign(project, fields);
+    // null removes the stored value; undefined leaves it unchanged.
+    if(image !== undefined) project.image = image ?? undefined;
+    if(githubUrl !== undefined) project.githubUrl = githubUrl ?? undefined;
+    if(liveUrl !== undefined) project.liveUrl = liveUrl ?? undefined;
     await project.save();
-
-    await cleanupOldImage(previousImageKey, project.image?.key);
-
     return project;
 }
 
@@ -65,10 +73,7 @@ export async function deleteProject(projectId: string){
     if(!project){
         throw new AppError("[project] Project Not Found",404);
     }
-    const imageKey = project.image?.key;
     await project.deleteOne();
-
-    await cleanupOldImage(imageKey, undefined);
 }
 
 export async function changeProjectStatus(projectId: string, projectStatus: "PUBLISHED" | "DRAFT" | "ARCHIVED"){

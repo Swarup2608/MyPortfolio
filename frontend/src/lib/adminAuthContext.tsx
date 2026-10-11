@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { adminFetch } from "@/lib/adminApi";
+import { adminFetch, clearCsrfToken } from "@/lib/adminApi";
 import { ApiError } from "@/lib/api";
 
 interface CurrentAdminUser {
@@ -49,6 +49,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   async function logout() {
     await adminFetch("/auth/logout", { method: "POST" }).catch(() => {});
+    clearCsrfToken();
     setUser(null);
     router.replace("/admin/login");
   }

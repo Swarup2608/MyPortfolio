@@ -1,118 +1,157 @@
-// Single source of truth for placeholder personal/portfolio content.
-// Edit these values directly to replace them with your real details —
-// no CMS needed for this part, only blog posts are database-backed.
+// Single source of truth for personal/portfolio content.
+// Edit these values directly — no CMS needed for this part,
+// only blog posts are database-backed.
 
 export const siteConfig = {
   name: "Swarup",
   firstName: "M N Santhi",
   lastName: "Swarup",
   title: "Full-Stack Developer",
-  tagline: "I build fast, reliable web applications end to end.",
-  bio: "I'm a full-stack developer who enjoys turning ideas into polished, production-ready products. This is a placeholder bio — replace it with a couple of sentences about your background, what you like building, and what you're looking for.",
-  location: "Your City, Country",
-  email: "you@example.com",
+  tagline: "I build products end to end — from the first idea to deployment.",
+  bio: "I'm a Full Stack Developer with 3.5+ years of experience building scalable web applications and AI-powered products end to end — from React and Next Frontend to Node.js and NestJS backend, APIs and databases. I build MCP servers, custom plugins and LLM-powered features that bring AI straight into real products and developer workflows.",
+  location: "Hyderabad, India",
+  email: "swarupmantripragada@gmail.com",
   social: {
-    github: "https://github.com/your-username",
-    linkedin: "https://linkedin.com/in/your-username",
-    twitter: "https://x.com/your-username",
+    github: "https://github.com/Swarup2608",
+    linkedin: "https://linkedin.com/in/swarup2608",
   },
-  resumeUrl: "",
+  // The PDF lives in frontend/public; the home page's Resume button downloads it.
+  // Set to "" to hide the button.
+  resumeUrl: "/M_N_Santhi_Swarup_Resume.pdf",
   about:
-    "Placeholder — a longer paragraph about your background, how you got into development, and what kind of work excites you.",
+    "I build products end to end, from the first idea to deployment, across React and Next Frontend, Node.js and NestJS backend, and AI.",
   goals:
-    "Placeholder — a paragraph on what you're currently working toward professionally.",
+    "I want to build products that solve meaningful problems and make a lasting impact on developers and millions of users. I'm looking to grow at a product-focused company, working across full-stack engineering, AI and design, and taking real ownership of what I ship.",
 } as const;
 
-export const skills: { category: string; items: string[] }[] = [
-  { category: "Frontend", items: ["React", "Next.js", "TypeScript", "Tailwind CSS"] },
-  { category: "Backend", items: ["Node.js", "Express", "REST APIs", "MongoDB"] },
-  { category: "Tooling", items: ["Git", "Docker", "CI/CD", "Testing"] },
+// Shown as bullet points on the About page (render with aboutPoints.map).
+export const aboutPoints: string[] = [
+  "3.5+ years building full-stack products end to end, from idea to deployment",
+  "Built 3+ MCP servers and 3+ custom plugins connecting Figma, the design system and source code — used by 3 teams and 15 developers",
+  "Maintain a React design system with 25+ reusable components, keeping UI consistent across 3 product teams",
+  "Built 20+ AI agent skills and workflows that automate repetitive development tasks",
+  "Shipped 6 full-stack projects, including Feature Pulse and an AI e-commerce platform with image-based recommendations",
+  "Integrate LLMs (Claude and Gemini APIs) and Python models into real products",
+  "Migrated a client platform from OutSystems to the MERN stack, owning development and support across both",
+  "Designed REST APIs and data models with Node.js, NestJS, MongoDB and PostgreSQL",
+  "3 awards at Evoke Technologies: 2× Pat on the Back and a Best Team Award",
 ];
 
+export const skills: { category: string; items: string[] }[] = [
+  { category: "Frontend", items: ["React", "TypeScript", "JavaScript", "Tailwind CSS", "HTML/CSS"] },
+  { category: "Backend", items: ["Node.js", "Express", "NestJS", "Java", "Python", "REST APIs"] },
+  { category: "Data", items: ["MongoDB", "PostgreSQL", "MySQL"] },
+  { category: "AI", items: ["LLMs", "MCP Servers", "Claude API", "Gemini API", "AI Agents", "Python"] },
+  { category: "Tooling", items: ["Git", "Figma", "Figma Plugins", "OutSystems"] },
+];
 
 export const experience: { range: string; role: string; org: string; desc: string }[] = [
   {
-    range: "2024 — Now",
+    range: "Feb 2023 — Now",
     role: "Full-Stack Developer",
-    org: "Company / Freelance",
-    desc: "Placeholder — one line on what you built and the impact it had.",
+    org: "Evoke Technologies",
+    desc: "Build and maintain a design system used by multiple product teams; created Figma plugins and MCP servers that bring components into developers' workflows; helped migrate a client platform from OutSystems to the MERN stack.",
   },
   {
-    range: "2022 — 2024",
-    role: "Software Developer",
-    org: "Company Name",
-    desc: "Placeholder — swap in your real role history here.",
+    range: "Jul 2020 — Aug 2021",
+    role: "Freelance Designer & Web Developer",
+    org: "Webrup Designers",
+    desc: "Designed websites, logos and flyers for clients, and built responsive sites with HTML, CSS, JavaScript and PHP/MySQL, including a product showcase for Nizmet.",
   },
 ];
 
 export const achievements: { year: string; title: string; org: string }[] = [
   {
+    year: "2025",
+    title: "Pat on the Back Award (×2)",
+    org: "Evoke Technologies · Mar 2025 & Oct 2023",
+  },
+  {
+    // Add the year you received it
+    year: "",
+    title: "Best Team Award",
+    org: "Evoke Technologies",
+  },
+];
+
+export const education: { year: string; title: string; org: string }[] = [
+  {
+    year: "2025",
+    title: "IBM Machine Learning Certification",
+    org: "IBM",
+  },
+  {
     year: "2024",
-    title: "Degree / Certification Name",
-    org: "Institution",
+    title: "OutSystems Mobile Developer & O11 Associate Reactive Developer",
+    org: "OutSystems",
+  },
+  {
+    // Add the year you completed it
+    year: "",
+    title: "Foundations of User Experience (UX) Design",
+    org: "Google · Coursera",
   },
   {
     year: "2023",
-    title: "Notable project or award",
-    org: "Context",
+    title: "B.Tech, Computer Science Engineering",
+    org: "Vignan's Institute of Information Technology",
   },
 ];
 
 export const philosophy =
-  "Placeholder — a short quote or personal statement about how you approach building software.";
+  "User experience comes first. Own the problem, not just the code — and solve root causes, not symptoms.";
 
 export const services: { num: string; name: string; desc: string }[] = [
   {
     num: "01",
-    name: "Web application development",
-    desc: "Placeholder — describe how you take a product from idea to a fast, production-ready web app.",
+    name: "Full-stack product development",
+    desc: "I take products from idea to production with React, Node.js and NestJS, built for scale, performance and clean architecture.",
   },
   {
     num: "02",
-    name: "API & backend engineering",
-    desc: "Placeholder — describe your approach to building reliable, well-documented APIs and services.",
+    name: "AI-powered applications",
+    desc: "I integrate LLMs and AI models into real products, from smart recommendations to automated insights.",
   },
   {
     num: "03",
-    name: "Database design",
-    desc: "Placeholder — describe how you model data and keep it performant as a product grows.",
+    name: "Design systems & UI engineering",
+    desc: "I build reusable components, design guidelines and accessible interfaces that keep products consistent across teams.",
   },
   {
     num: "04",
-    name: "DevOps & deployment",
-    desc: "Placeholder — describe how you ship: CI/CD, hosting, monitoring, the tools you rely on.",
+    name: "Developer tools & MCP servers",
+    desc: "I create plugins and Model Context Protocol servers that bring the right tools straight into developers' workflows.",
   },
   {
     num: "05",
-    name: "Technical consulting",
-    desc: "Placeholder — describe how you help teams make architecture or stack decisions.",
+    name: "API & backend engineering",
+    desc: "I design reliable, well-structured APIs and data models with MongoDB and PostgreSQL.",
   },
 ];
 
 export const process: { title: string; desc: string }[] = [
   {
     title: "Discover",
-    desc: "Placeholder — understand the problem, users, and constraints before writing code.",
+    desc: "Understand the problem, the users and the constraints before writing any code.",
   },
   {
     title: "Plan",
-    desc: "Placeholder — sketch the architecture and break the work into shippable pieces.",
+    desc: "Sketch the architecture and break the work into small, shippable pieces.",
   },
   {
     title: "Build",
-    desc: "Placeholder — write clean, tested code and iterate quickly.",
+    desc: "Write clean, tested, maintainable code, and fix root causes rather than symptoms.",
   },
   {
     title: "Ship",
-    desc: "Placeholder — deploy, monitor, and refine based on real feedback.",
+    desc: "Deploy, monitor and refine based on real user feedback.",
   },
 ];
 
-// "X" values are placeholders — replace with real numbers once you have them.
+// Real numbers, written conservatively.
 export const highlights: { value: string; label: string }[] = [
-  { value: "X+", label: "Years experience" },
-  { value: "X+", label: "Projects shipped" },
-  { value: "X+", label: "Technologies used" },
-  { value: "X+", label: "Happy clients" },
+  { value: "3.5+", label: "Years experience" },
+  { value: "6", label: "Full-stack projects shipped" },
+  { value: "15", label: "Developers using my tools" },
+  { value: "20+", label: "AI agent skills built" },
 ];
-
