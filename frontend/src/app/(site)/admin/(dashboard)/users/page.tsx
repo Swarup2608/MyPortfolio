@@ -12,6 +12,7 @@ import { useAdminAuth } from "@/lib/adminAuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { SetPasswordDialog } from "@/components/admin/SetPasswordDialog";
+import { NoPermission } from "@/components/admin/NoPermission";
 import type { AdminUser } from "@/types/admin";
 
 interface AdminUsersResponse {
@@ -79,7 +80,7 @@ export default function AdminUsersPage() {
   }
 
   if (!canRead) {
-    return <p className="text-foreground/40">You don&apos;t have access to this section.</p>;
+    return <NoPermission section="user management" />;
   }
 
   return (

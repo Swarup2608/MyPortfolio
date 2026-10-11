@@ -2,14 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-export type ThemeId = "dark" | "light" | "monolithic" | "high-contrast" | "retro" | "solarized";
+export type ThemeId = "dark" | "light" | "solarized";
 
 export const themes: { id: ThemeId; label: string; swatch: string }[] = [
   { id: "dark", label: "Dark", swatch: "#b600a8" },
   { id: "light", label: "Light", swatch: "#f6f6f7" },
-  { id: "monolithic", label: "Monolithic", swatch: "#ffffff" },
-  { id: "high-contrast", label: "High Contrast", swatch: "#ffff00" },
-  { id: "retro", label: "Retro", swatch: "#33ff33" },
   { id: "solarized", label: "Solarized", swatch: "#268bd2" },
 ];
 

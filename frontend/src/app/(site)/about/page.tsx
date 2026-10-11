@@ -9,7 +9,6 @@ import {
   achievements,
   education,
   philosophy,
-  services,
   process,
 } from "@/lib/siteConfig";
 

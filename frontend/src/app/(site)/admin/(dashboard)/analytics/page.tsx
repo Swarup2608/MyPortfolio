@@ -3,12 +3,13 @@
 import { TrafficOverview } from "@/components/admin/TrafficOverview";
 import { usePermission } from "@/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/permissions";
+import { NoPermission } from "@/components/admin/NoPermission";
 
 export default function AnalyticsPage() {
   const canRead = usePermission(PERMISSIONS.ANALYTICS_READ);
 
   if (!canRead) {
-    return <p className="text-foreground/40">You don&apos;t have access to this section.</p>;
+    return <NoPermission section="analytics" />;
   }
 
   return (
