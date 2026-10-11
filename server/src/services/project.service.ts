@@ -3,13 +3,33 @@ import type { createProjectInput } from '../schemas/project.schema.js';
 import type { UpdateProjectInput } from '../schemas/project-update.schema.js';
 import {AppError} from '../utils/app-error.js';
 import { validateObjectId } from '../utils/object-id.js';
+import { slugify } from '../utils/slugify.js';
+
+async function uniqueSlugFromTitle(title: string): Promise<string> {
+    const base = slugify(title) || "project";
+    let slug = base;
+    for (let suffix = 2; await Project.exists({ slug }); suffix++) {
+        slug = `${base}-${suffix}`;
+    }
+    return slug;
+}
 
 export  async function createProject(input: createProjectInput){
-    const existingProject = await Project.findOne({slug: input.slug});
-    if(existingProject){
-        throw new AppError("[project] Project already exists with this slug", 409);
+    let slug: string;
+    if(input.slug){
+        const existingProject = await Project.findOne({slug: input.slug});
+        if(existingProject){
+            throw new AppError("[project] Project already exists with this slug", 409);
+        }
+        slug = input.slug;
+    }else{
+        slug = await uniqueSlugFromTitle(input.title);
     }
-    return Project.create({...input, status: "DRAFT"});
+    return Project.create({
+        ...input,
+        slug,
+        ...(input.status === "PUBLISHED" ? { publishedAt: new Date() } : {}),
+    });
 }
 
 export async function getProjects(){
@@ -18,7 +38,7 @@ export async function getProjects(){
 
 export async function getProjectById(projectId: string){
     validateObjectId(projectId);
-    const project = Project.findById(projectId).lean();
+    const project = await Project.findById(projectId).lean();
     if(!project){
         throw new AppError("[project] Project not found",404);
     }
@@ -27,17 +47,22 @@ export async function getProjectById(projectId: string){
 
 export async function updateProject(projectId: string, input: UpdateProjectInput){
     validateObjectId(projectId);
-    const project = await Project.findById(projectId).lean();
+    const project = await Project.findById(projectId);
     if(!project){
         throw new AppError("[project] Project not found",404);
     }
     if(input.slug && input.slug !== project.slug){
-        const existingProject = await Project.findOne({slug: input.slug, id: {$ne: projectId}});
+        const existingProject = await Project.findOne({slug: input.slug, _id: {$ne: projectId}});
         if(existingProject){
             throw new AppError("[project] Project with this slug already exists",409);
         }
     }
-    Object.assign(project, input);
+    const { image, githubUrl, liveUrl, ...fields } = input;
+    Object.assign(project, fields);
+    // null removes the stored value; undefined leaves it unchanged.
+    if(image !== undefined) project.image = image ?? undefined;
+    if(githubUrl !== undefined) project.githubUrl = githubUrl ?? undefined;
+    if(liveUrl !== undefined) project.liveUrl = liveUrl ?? undefined;
     await project.save();
     return project;
 }
@@ -58,7 +83,7 @@ export async function changeProjectStatus(projectId: string, projectStatus: "PUB
         throw new AppError("[project] Project Not Found",404);
     }
     project.status = projectStatus;
-    if(status == "PUBLISHED"){
+    if(projectStatus == "PUBLISHED"){
         if(!project.publishedAt){
             project.publishedAt = new Date();
         }

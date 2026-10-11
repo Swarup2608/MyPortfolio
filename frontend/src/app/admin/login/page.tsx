@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { adminFetch } from "@/lib/adminApi";
@@ -39,7 +40,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-[calc(100vh-64px)] items-center justify-center overflow-hidden px-5 py-16 sm:min-h-[calc(100vh-76px)]">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 py-16">
       <div
         className="pointer-events-none absolute -left-40 -top-52 h-160 w-160 rounded-full blur-3xl"
         style={{ background: "radial-gradient(circle, rgba(182,0,168,.22), transparent 66%)" }}
@@ -106,6 +107,13 @@ export default function AdminLoginPage() {
           </Button>
         </form>
       </div>
+
+      <Link
+        href="/"
+        className="relative mt-6 text-xs font-light uppercase tracking-widest text-foreground/40 transition-colors hover:text-foreground/70"
+      >
+        ← Back to site
+      </Link>
     </div>
   );
 }

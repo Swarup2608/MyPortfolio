@@ -11,7 +11,7 @@ import type { PostResponse } from "@/types/post";
 async function getPost(slug: string) {
   try {
     const data = await publicFetch<PostResponse>(`/posts/${slug}`, { revalidate: 30 });
-    return data.post;
+    return data.data;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
@@ -28,8 +28,8 @@ export async function generateMetadata({
   if (!post) return {};
 
   return {
-    title: post.seoTitle || post.title,
-    description: post.seoDescription || post.excerpt,
+    title: post.seo?.title || post.title,
+    description: post.seo?.description || post.excerpt,
   };
 }
 
@@ -48,11 +48,11 @@ export default async function BlogPostPage({
         ← All posts
       </Link>
 
-      {post.coverImage && (
+      {post.coverImage?.url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={post.coverImage}
-          alt=""
+          src={post.coverImage.url}
+          alt={post.coverImage.alt}
           className="mt-6 aspect-21/9 w-full rounded-3xl bg-surface object-cover"
         />
       )}
@@ -63,7 +63,7 @@ export default async function BlogPostPage({
       <div className="mt-5 flex flex-wrap items-center gap-4 border-b border-foreground/10 pb-6 text-sm font-light text-foreground/45">
         <span>{formatDate(post.publishedAt)}</span>
         <span>&middot;</span>
-        <span>{post.readingTimeMinutes} min read</span>
+        <span>{post.readingTimeInMinutes} min read</span>
       </div>
       {post.tags.length > 0 && (
         <div className="mt-6 flex flex-wrap gap-2">

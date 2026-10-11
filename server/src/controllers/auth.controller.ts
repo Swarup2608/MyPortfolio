@@ -5,6 +5,7 @@ import {createAccessToken} from "../utils/jwt.js";
 import {env} from "../config/env.js";
 import {Types} from "mongoose";
 import type {AuthenticatedRequest} from "../middleware/auth.middleware.js";
+import {CSRF_COOKIE} from "./csrf.controller.js";
 
 
 // Login controller - Will verify if the user exists and if the password is correct, then generate a JWT token and send it back to the client via a cookie. The token will be used for authentication in subsequent requests.
@@ -58,10 +59,15 @@ export async function login(req: Request, res: Response) : Promise<void>{
     }
 }
 
-// Logout controller - Will clear the JWT token cookie from the client, effectively logging the user out.
+// Logout controller - Will clear the JWT and CSRF cookies from the client, effectively logging the user out.
 export async function logout(req: Request, res: Response): Promise<void>{
     res.clearCookie("access_token", {
         httpOnly: true,
+        secure: env.COOKIE_SECURE,
+        sameSite: env.COOKIE_SAMESITE,
+        path: '/',
+    });
+    res.clearCookie(CSRF_COOKIE, {
         secure: env.COOKIE_SECURE,
         sameSite: env.COOKIE_SAMESITE,
         path: '/',

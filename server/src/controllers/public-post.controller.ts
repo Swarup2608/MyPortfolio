@@ -1,21 +1,18 @@
 import type {Request, Response} from 'express';
-import {Post} from '../models/Post.model.js';
-import {AppError} from '../utils/app-error.js';
+import type { PublicPostListQuery } from '../schemas/list-query.schema.js';
+import { getPublishedPostBySlug, getPublishedPosts, getPublishedTags } from '../services/post.service.js';
 
-export async function getPublishedPosts(_req: Request,res: Response): Promise<void>{
-    const posts = await Post.find({
-        status: "PUBLISHED",
-    }).sort({publishedAt: -1}).select("title slug excerpt coverImage tags category publishedAt readingTimeMinutes viewCount").lean();
-    res.status(200).json({success:true,data:posts});
+export async function getPublishedPostsController(_req: Request,res: Response): Promise<void>{
+    const { posts, pagination } = await getPublishedPosts(res.locals.query as PublicPostListQuery);
+    res.status(200).json({success:true,data:posts,pagination});
 }
 
-export async function getPublishedPostsBySlug(req: Request, res: Response) : Promise<void>{
-    const post = await Post.findOne({
-        slug: req.params.slug,
-        status: "PUBLISHED",
-    }).select("title slug excerpt coverImage tags category publishedAt readingTimeMinutes viewCount seo author").populate("author","name").lean();
-    if(!post){
-        throw new AppError("[post] Post not found",404);
-    }
+export async function getPublishedTagsController(_req: Request,res: Response): Promise<void>{
+    const tags = await getPublishedTags();
+    res.status(200).json({success:true,data:tags});
+}
+
+export async function getPublishedPostsBySlug(req: Request<{slug: string}>, res: Response) : Promise<void>{
+    const post = await getPublishedPostBySlug(req.params.slug);
     res.status(200).json({success:true,data:post});
 }

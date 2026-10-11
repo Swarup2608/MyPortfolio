@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Kanit } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { SiteChrome } from "@/components/layout/SiteChrome";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { DialogProvider } from "@/components/ui/Dialog";
 import { siteConfig } from "@/lib/siteConfig";
 
 const kanit = Kanit({
@@ -24,9 +25,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${kanit.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <PageViewTracker />
+        <DialogProvider>
+          <SiteChrome>{children}</SiteChrome>
+        </DialogProvider>
         <Toaster
           position="bottom-center"
           toastOptions={{

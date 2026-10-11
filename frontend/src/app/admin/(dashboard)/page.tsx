@@ -4,13 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { adminFetch } from "@/lib/adminApi";
+import type { PaginatedResponse } from "@/types/api";
 import type { PostListItem, PostListResponse } from "@/types/post";
+import type { Project, ProjectListResponse } from "@/types/project";
+import { TrafficOverview } from "@/components/admin/TrafficOverview";
 
 const statusColor = (status?: string) =>
-  status === "published" ? "#4ade80" : "rgba(215,226,234,.5)";
+  status === "PUBLISHED" ? "#4ade80" : "rgba(215,226,234,.5)";
 
-// No visitor-tracking backend exists yet, so instead of fabricating traffic
-// numbers we chart something real: how many posts were published each month.
+// How many posts were published in each of the last 12 months.
 function publishedByMonth(posts: PostListItem[]) {
   const months: { key: string; label: string }[] = [];
   const now = new Date();
@@ -41,15 +43,19 @@ interface ContactMessage {
 
 export default function AdminDashboardPage() {
   const [posts, setPosts] = useState<PostListItem[] | null>(null);
+  const [projects, setProjects] = useState<Project[] | null>(null);
   const [messages, setMessages] = useState<ContactMessage[] | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     adminFetch<PostListResponse>("/admin/posts?limit=100")
-      .then((data) => setPosts(data.posts))
+      .then((data) => setPosts(data.data))
       .catch(() => setError("Failed to load posts"));
-    adminFetch<{ success: true; messages: ContactMessage[] }>("/admin/contact?limit=5")
-      .then((data) => setMessages(data.messages))
+    adminFetch<ProjectListResponse>("/admin/projects")
+      .then((data) => setProjects(data.data))
+      .catch(() => setProjects([]));
+    adminFetch<PaginatedResponse<ContactMessage>>("/admin/contact?limit=5")
+      .then((data) => setMessages(data.data))
       .catch(() => setMessages([]));
   }, []);
 
@@ -57,15 +63,16 @@ export default function AdminDashboardPage() {
     if (!posts) return null;
     return {
       total: posts.length,
-      published: posts.filter((p) => p.status === "published").length,
-      draft: posts.filter((p) => p.status === "draft").length,
-      views: posts.reduce((sum, p) => sum + (p.views ?? 0), 0),
+      published: posts.filter((p) => p.status === "PUBLISHED").length,
+      draft: posts.filter((p) => p.status === "DRAFT").length,
+      views: posts.reduce((sum, p) => sum + (p.viewCount ?? 0), 0),
       tags: new Set(posts.flatMap((p) => p.tags)).size,
     };
   }, [posts]);
 
   const topPosts = useMemo(
-    () => (posts ? [...posts].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5) : []),
+    () =>
+      posts ? [...posts].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0)).slice(0, 5) : [],
     [posts]
   );
   const recentPosts = useMemo(
@@ -86,17 +93,22 @@ export default function AdminDashboardPage() {
         Everything happening across the site.
       </p>
 
-      {error && <p className="mt-6 text-sm text-red-400">{error}</p>}
-      {!error && !stats && <p className="mt-6 text-foreground/40">Loading…</p>}
+      <TrafficOverview />
+
+      <h2 className="mt-10 text-lg font-semibold text-foreground">Content</h2>
+
+      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+      {!error && !stats && <p className="mt-4 text-foreground/40">Loading…</p>}
 
       {stats && (
-        <div className="mt-7 grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-4 grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-6">
           {[
             { label: "Total posts", value: stats.total },
-            { label: "Published", value: stats.published },
-            { label: "Drafts", value: stats.draft },
-            { label: "Total views", value: stats.views },
+            { label: "Published posts", value: stats.published },
+            { label: "Post drafts", value: stats.draft },
+            { label: "Blog post views", value: stats.views },
             { label: "Tags used", value: stats.tags },
+            { label: "Projects", value: projects?.length ?? "—" },
           ].map((c) => (
             <div key={c.label} className="rounded-2xl border border-foreground/10 bg-surface p-5">
               <div className="text-[.68rem] font-light uppercase tracking-widest text-foreground/40">
@@ -126,7 +138,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4.5 lg:grid-cols-3">
+      <div className="mt-5 grid gap-4.5 lg:grid-cols-2">
         <div className="rounded-3xl border border-foreground/10 bg-surface p-6">
           <div className="mb-3.5 text-base font-semibold text-foreground">Recent messages</div>
           {messages && messages.length === 0 && (
@@ -156,7 +168,7 @@ export default function AdminDashboardPage() {
               className="flex justify-between gap-3 border-b border-foreground/5 py-2.5 last:border-b-0"
             >
               <span className="truncate text-sm font-light text-foreground/85">{p.title}</span>
-              <span className="flex-none text-xs font-light text-foreground/35">{p.views ?? 0}</span>
+              <span className="flex-none text-xs font-light text-foreground/35">{p.viewCount ?? 0}</span>
             </div>
           ))}
         </div>
@@ -171,7 +183,7 @@ export default function AdminDashboardPage() {
             >
               <span className="truncate text-sm font-light text-foreground/85">{p.title}</span>
               <span className="flex-none text-xs" style={{ color: statusColor(p.status) }}>
-                {p.status}
+                {p.status?.toLowerCase()}
               </span>
             </Link>
           ))}
@@ -187,6 +199,39 @@ export default function AdminDashboardPage() {
               className="rounded-full border border-foreground/15 px-4 py-2.5 text-xs font-light text-foreground"
             >
               Analytics
+            </Link>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-foreground/10 bg-surface p-6">
+          <div className="mb-3.5 text-base font-semibold text-foreground">Projects</div>
+          {projects && projects.length === 0 && (
+            <p className="text-sm font-light text-foreground/35">No projects yet.</p>
+          )}
+          {projects?.slice(0, 5).map((p) => (
+            <Link
+              key={p._id}
+              href={`/admin/projects/${p._id}/edit`}
+              className="flex justify-between gap-3 border-b border-foreground/5 py-2.5 last:border-b-0"
+            >
+              <span className="truncate text-sm font-light text-foreground/85">{p.title}</span>
+              <span className="flex-none text-xs" style={{ color: statusColor(p.status) }}>
+                {p.status.toLowerCase()}
+              </span>
+            </Link>
+          ))}
+          <div className="mt-4 flex gap-2.5">
+            <Link
+              href="/admin/projects/new"
+              className="rounded-full border border-accent/40 bg-accent-soft px-4 py-2.5 text-xs font-light text-foreground"
+            >
+              + New project
+            </Link>
+            <Link
+              href="/admin/projects"
+              className="rounded-full border border-foreground/15 px-4 py-2.5 text-xs font-light text-foreground"
+            >
+              All projects
             </Link>
           </div>
         </div>

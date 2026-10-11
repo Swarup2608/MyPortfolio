@@ -39,7 +39,7 @@ const projectSchema = new Schema<IProject>({
         key: {type: String, trim: true},
         alt: { type: String, trim: true, maxlength: 200},
    },
-    technologies: {type: [String], defualt: []},
+    technologies: {type: [String], default: []},
     githubUrl: {type: String, trim: true},
     liveUrl: {type: String, trim: true},
     category: {type: String, trim: true, maxlength: 100},

@@ -10,9 +10,9 @@ dist/
 .env.*.local
 !.env.example
 
-# backend local data
-backend/uploads/*
-!backend/uploads/.gitkeep
+# server local data
+server/uploads/*
+!server/uploads/.gitkeep
 
 # logs
 npm-debug.log*

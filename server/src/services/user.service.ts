@@ -55,7 +55,7 @@ export async function createUser(input : CreateUserInput){
 export async function updateUser(userId: string, input: UpdateUserInput){
     validateObjectId(userId);
     if(input.email){
-        const exisitingUser = await User.findOne({email: input.email, id: {$ne: userId}});
+        const exisitingUser = await User.findOne({email: input.email, _id: {$ne: userId}});
         if(exisitingUser){
             throw new Error("USER_ALREADY_EXISTS");
         }

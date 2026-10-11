@@ -1,5 +1,4 @@
 import rateLimit from "express-rate-limit";
-import { success } from "zod";
 
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -34,4 +33,26 @@ export const contactRateLimiter = rateLimit({
     success: false,
     message: "[rate-limit] Too many contact submission, please try again."
   }
+});
+
+export const trackRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 200,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "[rate-limit] Too many tracking events.",
+  },
+});
+
+export const uploadRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "[rate-limit] Too many uploads. Please try again later.",
+  },
 });

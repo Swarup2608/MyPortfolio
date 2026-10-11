@@ -5,11 +5,11 @@ import type { PostListItem } from "@/types/post";
 export function PostCard({ post }: { post: PostListItem }) {
   return (
     <Link href={`/blog/${post.slug}`} className="group block">
-      {post.coverImage ? (
+      {post.coverImage?.url !== undefined ?  (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={post.coverImage}
-          alt=""
+          src={post.coverImage.url}
+          alt={post.coverImage.alt}
           loading="lazy"
           className="mb-4 aspect-16/10 w-full rounded-3xl bg-surface object-cover"
         />

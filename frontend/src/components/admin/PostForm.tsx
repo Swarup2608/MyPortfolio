@@ -7,7 +7,8 @@ import { ImageUploader } from "@/components/admin/ImageUploader";
 import { MarkdownContent } from "@/components/blog/MarkdownContent";
 import { adminFetch } from "@/lib/adminApi";
 import { ApiError } from "@/lib/api";
-import type { Post, PostStatus } from "@/types/post";
+import type { ApiResponse } from "@/types/api";
+import type { CoverImage, Post, PostStatus } from "@/types/post";
 
 const fieldClass =
   "mt-2 w-full rounded-2xl border border-foreground/15 bg-foreground/5 px-4 py-3.5 text-sm text-foreground outline-none transition-colors focus:border-accent";
@@ -21,10 +22,10 @@ export function PostForm({ post }: { post?: Post }) {
   const [title, setTitle] = useState(post?.title ?? "");
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [content, setContent] = useState(post?.content ?? "");
-  const [coverImage, setCoverImage] = useState(post?.coverImage ?? "");
+  const [coverImage, setCoverImage] = useState<CoverImage | null>(post?.coverImage ?? null);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [tags, setTags] = useState((post?.tags ?? []).join(", "));
-  const [status, setStatus] = useState<PostStatus>(post?.status ?? "draft");
+  const [status, setStatus] = useState<PostStatus>(post?.status ?? "DRAFT");
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -40,19 +41,17 @@ export function PostForm({ post }: { post?: Post }) {
       if (coverImageFile) {
         const formData = new FormData();
         formData.append("image", coverImageFile);
-        const uploaded = await adminFetch<{ success: true; url: string }>("/media", {
-          method: "POST",
-          body: formData,
-        });
-        finalCoverImage = uploaded.url;
+        const uploaded = await adminFetch<ApiResponse<{ url: string; key: string }>>(
+          "/admin/media",
+          { method: "POST", body: formData }
+        );
+        finalCoverImage = { ...uploaded.data, alt: "" };
       }
 
       const body = {
         title,
         excerpt,
         content,
-        coverImage: finalCoverImage,
-        status,
         tags: tags
           .split(",")
           .map((t) => t.trim().toLowerCase())
@@ -60,14 +59,22 @@ export function PostForm({ post }: { post?: Post }) {
       };
 
       if (isEdit && post) {
+        // coverImage: null tells the server to remove the existing image.
         await adminFetch(`/admin/posts/${post._id}`, {
-          method: "PUT",
-          body: JSON.stringify(body),
+          method: "PATCH",
+          body: JSON.stringify({ ...body, coverImage: finalCoverImage }),
         });
+        // Publishing is a separate permission on the server, so status has its own endpoint.
+        if (status !== post.status) {
+          await adminFetch(`/admin/posts/${post._id}/status`, {
+            method: "PATCH",
+            body: JSON.stringify({ status }),
+          });
+        }
       } else {
         await adminFetch("/admin/posts", {
           method: "POST",
-          body: JSON.stringify(body),
+          body: JSON.stringify({ ...body, status, coverImage: finalCoverImage ?? undefined }),
         });
       }
       router.push("/admin");
@@ -101,7 +108,7 @@ export function PostForm({ post }: { post?: Post }) {
                 : "Saving…"
               : isEdit
                 ? "Save changes"
-                : status === "published"
+                : status === "PUBLISHED"
                   ? "Publish"
                   : "Save draft"}
           </Button>
@@ -134,7 +141,7 @@ export function PostForm({ post }: { post?: Post }) {
             <textarea
               id="excerpt"
               rows={2}
-              maxLength={400}
+              maxLength={500}
               value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
               placeholder="A one or two sentence summary shown on the blog list page"
@@ -179,12 +186,12 @@ export function PostForm({ post }: { post?: Post }) {
           <div className={cardClass}>
             <div className="mb-4 text-sm font-semibold text-foreground">Cover image</div>
             <ImageUploader
-              existingUrl={coverImage}
+              existingUrl={coverImage?.url ?? ""}
               file={coverImageFile}
               onFileSelected={setCoverImageFile}
               onRemove={() => {
                 setCoverImageFile(null);
-                setCoverImage("");
+                setCoverImage(null);
               }}
             />
           </div>
@@ -199,8 +206,9 @@ export function PostForm({ post }: { post?: Post }) {
               onChange={(e) => setStatus(e.target.value as PostStatus)}
               className={fieldClass}
             >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
+              <option value="DRAFT">Draft</option>
+              <option value="PUBLISHED">Published</option>
+              <option value="ARCHIVED">Archived</option>
             </select>
 
             <label htmlFor="tags" className={`${labelClass} mt-5 block`}>

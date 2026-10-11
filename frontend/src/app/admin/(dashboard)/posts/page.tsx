@@ -2,27 +2,42 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import { adminFetch } from "@/lib/adminApi";
+import { useDialog } from "@/components/ui/Dialog";
 import type { PostListItem, PostListResponse } from "@/types/post";
 
 const statusColor = (status?: string) =>
-  status === "published" ? "#4ade80" : "rgba(215,226,234,.5)";
+  status === "PUBLISHED" ? "#4ade80" : "rgba(215,226,234,.5)";
 
 export default function AllPostsPage() {
   const [posts, setPosts] = useState<PostListItem[] | null>(null);
   const [error, setError] = useState("");
+  const dialog = useDialog();
 
   function load() {
     adminFetch<PostListResponse>("/admin/posts?limit=100")
-      .then((data) => setPosts(data.posts))
+      .then((data) => setPosts(data.data))
       .catch(() => setError("Failed to load posts"));
   }
 
   useEffect(load, []);
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this post? This cannot be undone.")) return;
-    await adminFetch(`/admin/posts/${id}`, { method: "DELETE" });
+  async function handleDelete(post: PostListItem) {
+    const deleted = await dialog.confirm({
+      tone: "danger",
+      title: "Delete this post?",
+      message: (
+        <>
+          <span className="font-normal text-foreground/80">“{post.title}”</span> will be
+          permanently removed. This cannot be undone.
+        </>
+      ),
+      confirmText: "Delete",
+      onConfirm: () => adminFetch(`/admin/posts/${post._id}`, { method: "DELETE" }),
+    });
+    if (!deleted) return;
+    toast.success("Post deleted");
     load();
   }
 
@@ -72,13 +87,13 @@ export default function AllPostsPage() {
                         className="text-xs font-normal"
                         style={{ color: statusColor(post.status) }}
                       >
-                        {post.status}
+                        {post.status?.toLowerCase()}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-foreground/40">{post.views ?? 0}</td>
+                    <td className="px-5 py-3.5 text-foreground/40">{post.viewCount ?? 0}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex gap-3.5 text-xs">
-                        {post.status === "published" && (
+                        {post.status === "PUBLISHED" && (
                           <a
                             href={`/blog/${post.slug}`}
                             target="_blank"
@@ -92,7 +107,7 @@ export default function AllPostsPage() {
                           Edit
                         </Link>
                         <button
-                          onClick={() => handleDelete(post._id)}
+                          onClick={() => handleDelete(post)}
                           className="text-red-400 hover:text-red-300"
                         >
                           Delete

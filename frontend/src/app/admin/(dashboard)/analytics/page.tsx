@@ -84,7 +84,7 @@ export default function AnalyticsPage() {
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
-    adminFetch<PostListResponse>("/admin/posts?limit=200").then((data) => setPosts(data.posts));
+    adminFetch<PostListResponse>("/admin/posts?limit=200").then((data) => setPosts(data.data));
   }, []);
 
   const scoped = useMemo(() => {
@@ -97,10 +97,10 @@ export default function AnalyticsPage() {
   }, [posts, range, now]);
 
   const cards = useMemo(() => {
-    const published = scoped.filter((p) => p.status === "published");
-    const views = scoped.reduce((s, p) => s + (p.views ?? 0), 0);
+    const published = scoped.filter((p) => p.status === "PUBLISHED");
+    const views = scoped.reduce((s, p) => s + (p.viewCount ?? 0), 0);
     const avgReading = scoped.length
-      ? Math.round(scoped.reduce((s, p) => s + p.readingTimeMinutes, 0) / scoped.length)
+      ? Math.round(scoped.reduce((s, p) => s + p.readingTimeInMinutes, 0) / scoped.length)
       : 0;
     return [
       { label: "Posts in range", value: scoped.length },
@@ -111,14 +111,14 @@ export default function AnalyticsPage() {
   }, [scoped]);
 
   const topByViews = useMemo(
-    () => [...scoped].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 8),
+    () => [...scoped].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0)).slice(0, 8),
     [scoped]
   );
   const viewsChart = useMemo(() => {
-    const max = Math.max(1, ...topByViews.map((p) => p.views ?? 0));
+    const max = Math.max(1, ...topByViews.map((p) => p.viewCount ?? 0));
     return topByViews.map((p) => ({
       label: p.title.slice(0, 8),
-      h: Math.max(6, Math.round(((p.views ?? 0) / max) * 100)),
+      h: Math.max(6, Math.round(((p.viewCount ?? 0) / max) * 100)),
     }));
   }, [topByViews]);
   const monthChart = useMemo(() => publishedByMonth(posts ?? []), [posts]);
@@ -134,8 +134,8 @@ export default function AnalyticsPage() {
   }, [scoped]);
 
   const byStatus = useMemo(() => {
-    const published = scoped.filter((p) => p.status === "published").length;
-    const draft = scoped.filter((p) => p.status === "draft").length;
+    const published = scoped.filter((p) => p.status === "PUBLISHED").length;
+    const draft = scoped.filter((p) => p.status === "DRAFT").length;
     const max = Math.max(1, published, draft);
     return [
       { name: "Published", value: String(published), pct: Math.round((published / max) * 100) },
@@ -144,10 +144,14 @@ export default function AnalyticsPage() {
   }, [scoped]);
 
   const topViewsPanel = useMemo(() => {
-    const max = Math.max(1, ...topByViews.map((p) => p.views ?? 0));
+    const max = Math.max(1, ...topByViews.map((p) => p.viewCount ?? 0));
     return topByViews
       .slice(0, 5)
-      .map((p) => ({ name: p.title, value: String(p.views ?? 0), pct: Math.round(((p.views ?? 0) / max) * 100) }));
+      .map((p) => ({
+        name: p.title,
+        value: String(p.viewCount ?? 0),
+        pct: Math.round(((p.viewCount ?? 0) / max) * 100),
+      }));
   }, [topByViews]);
 
   return (

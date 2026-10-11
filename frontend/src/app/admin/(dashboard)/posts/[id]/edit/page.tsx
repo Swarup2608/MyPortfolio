@@ -13,7 +13,7 @@ export default function EditPostPage() {
 
   useEffect(() => {
     adminFetch<PostResponse>(`/admin/posts/${params.id}`)
-      .then((data) => setPost(data.post))
+      .then((data) => setPost(data.data))
       .catch(() => setError("Post not found"));
   }, [params.id]);
 

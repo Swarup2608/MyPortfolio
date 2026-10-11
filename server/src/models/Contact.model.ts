@@ -11,6 +11,7 @@ export type ContactStatus = (typeof CONTACT_STATUSES)[number];
 export interface IContact extends Document{
     name: string;
     email: string;
+    phone?: string;
     subject: string;
     message: string;
     status : ContactStatus;
@@ -24,6 +25,7 @@ const ContactSchema = new Schema<IContact>(
     {
         name: {type: String, required: true, trim: true, minlength: 2, maxlength: 100},
         email: {type: String, required: true, trim: true, lowercase: true, index: true},
+        phone: {type: String, trim: true, maxlength: 30},
         subject: {type: String, trim: true, maxlength: 200},
         message: {type: String, trim: true, maxlength: 5000, minlength: 10, required: true},
         status: {type: String, enum: CONTACT_STATUSES, default: "NEW", index: true},

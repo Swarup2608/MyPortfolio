@@ -1,23 +1,45 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { formatDate } from "@/lib/utils";
 import { adminFetch } from "@/lib/adminApi";
+import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useDialog } from "@/components/ui/Dialog";
+import type { PaginatedResponse } from "@/types/api";
+
+type ContactStatus = "NEW" | "READ" | "ARCHIVED";
 
 interface ContactMessage {
   _id: string;
   name: string;
   email: string;
+  phone?: string;
+  subject?: string;
   message: string;
-  read: boolean;
+  status: ContactStatus;
   createdAt: string;
 }
 
-interface MessagesResponse {
-  success: true;
-  messages: ContactMessage[];
+const isUnread = (m: ContactMessage) => m.status === "NEW";
+
+const VIEWS = [
+  { key: "inbox", label: "Inbox" },
+  { key: "unread", label: "Unread" },
+  { key: "archived", label: "Archived" },
+] as const;
+
+type ViewKey = (typeof VIEWS)[number]["key"];
+
+function inView(m: ContactMessage, view: ViewKey) {
+  if (view === "archived") return m.status === "ARCHIVED";
+  if (view === "unread") return m.status === "NEW";
+  return m.status !== "ARCHIVED";
 }
+
+const actionClass =
+  "text-xs font-medium uppercase tracking-widest transition-colors disabled:opacity-40";
 
 const DATE_RANGES = [
   { key: "all", label: "All time" },
@@ -31,7 +53,10 @@ type SortOrder = "newest" | "oldest";
 
 export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<ContactMessage[] | null>(null);
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [error, setError] = useState("");
+  const [view, setView] = useState<ViewKey>("inbox");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const dialog = useDialog();
   const [dateRange, setDateRange] = useState<DateRangeKey>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [now, setNow] = useState<number | null>(null);
@@ -55,24 +80,53 @@ export default function AdminMessagesPage() {
   }, [showCustom]);
 
   function load() {
-    adminFetch<MessagesResponse>("/admin/contact?limit=50").then((data) =>
-      setMessages(data.messages)
-    );
+    adminFetch<PaginatedResponse<ContactMessage>>("/admin/contact?limit=50")
+      .then((data) => setMessages(data.data))
+      .catch((err) =>
+        setError(err instanceof ApiError ? err.message : "Failed to load messages")
+      );
   }
 
   useEffect(load, []);
 
-  async function markRead(id: string) {
-    await adminFetch(`/admin/contact/${id}/read`, { method: "PATCH" });
-    load();
+  async function changeStatus(m: ContactMessage, status: ContactStatus, successText?: string) {
+    setPendingId(m._id);
+    try {
+      await adminFetch(`/admin/contact/${m._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      setMessages((prev) => prev && prev.map((x) => (x._id === m._id ? { ...x, status } : x)));
+      if (successText) toast.success(successText);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't update the message");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleDelete(m: ContactMessage) {
+    const deleted = await dialog.confirm({
+      tone: "danger",
+      title: "Delete this message?",
+      message: (
+        <>
+          The message from <span className="font-normal text-foreground/80">{m.name}</span> will
+          be permanently removed. This cannot be undone.
+        </>
+      ),
+      confirmText: "Delete",
+      onConfirm: () => adminFetch(`/admin/contact/${m._id}`, { method: "DELETE" }),
+    });
+    if (!deleted) return;
+    setMessages((prev) => prev && prev.filter((x) => x._id !== m._id));
+    toast.success("Message deleted");
   }
 
   const filtered = useMemo(() => {
     if (!messages) return [];
 
-    let list = messages;
-
-    if (unreadOnly) list = list.filter((m) => !m.read);
+    let list = messages.filter((m) => inView(m, view));
 
     if (dateRange === "custom") {
       const fromTime = appliedFrom ? new Date(`${appliedFrom}T00:00:00`).getTime() : -Infinity;
@@ -90,9 +144,16 @@ export default function AdminMessagesPage() {
       const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       return sortOrder === "newest" ? -diff : diff;
     });
-  }, [messages, unreadOnly, dateRange, sortOrder, now, appliedFrom, appliedTo]);
+  }, [messages, view, dateRange, sortOrder, now, appliedFrom, appliedTo]);
 
-  const unreadCount = messages?.filter((m) => !m.read).length ?? 0;
+  const counts = useMemo(
+    () => ({
+      inbox: messages?.filter((m) => inView(m, "inbox")).length ?? 0,
+      unread: messages?.filter((m) => inView(m, "unread")).length ?? 0,
+      archived: messages?.filter((m) => inView(m, "archived")).length ?? 0,
+    }),
+    [messages]
+  );
 
   return (
     <div>
@@ -101,7 +162,25 @@ export default function AdminMessagesPage() {
         Submissions from the contact form.
       </p>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2.5">
+      <div className="mt-6 inline-flex rounded-full border border-foreground/15 p-1">
+        {VIEWS.map((v) => (
+          <button
+            key={v.key}
+            onClick={() => setView(v.key)}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-xs font-light transition-colors",
+              view === v.key
+                ? "bg-accent-soft text-accent"
+                : "text-foreground/55 hover:text-foreground/80"
+            )}
+          >
+            {v.label}
+            {counts[v.key] > 0 && <span className="ml-1.5 opacity-70">{counts[v.key]}</span>}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
         <div className="flex gap-1.5">
           {DATE_RANGES.map((r) => (
             <button
@@ -197,18 +276,6 @@ export default function AdminMessagesPage() {
           )}
         </div>
 
-        <button
-          onClick={() => setUnreadOnly((v) => !v)}
-          className={cn(
-            "rounded-full border px-4 py-2 text-xs font-light transition-colors",
-            unreadOnly
-              ? "border-accent bg-accent-soft text-accent"
-              : "border-foreground/15 text-foreground/55 hover:bg-foreground/5"
-          )}
-        >
-          Unread only{unreadCount > 0 ? ` (${unreadCount})` : ""}
-        </button>
-
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value as SortOrder)}
@@ -219,48 +286,104 @@ export default function AdminMessagesPage() {
         </select>
       </div>
 
-      {!messages && <p className="mt-6 text-foreground/40">Loading…</p>}
+      {error && <p className="mt-6 text-sm text-red-400">{error}</p>}
+      {!error && !messages && <p className="mt-6 text-foreground/40">Loading…</p>}
       {messages && filtered.length === 0 && (
         <p className="mt-6 text-foreground/40">
-          {messages.length === 0 ? "No messages yet." : "No messages match these filters."}
+          {messages.length === 0
+            ? "No messages yet."
+            : view === "archived" && counts.archived === 0
+              ? "No archived messages."
+              : "No messages match these filters."}
         </p>
       )}
 
       <div className="mt-7 space-y-3.5">
-        {filtered.map((m) => (
-          <div
-            key={m._id}
-            className={cn(
-              "rounded-2xl border border-foreground/10 p-6",
-              m.read ? "bg-surface" : "bg-accent-soft"
-            )}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-medium text-foreground">{m.name}</p>
-                <a href={`mailto:${m.email}`} className="text-sm text-accent">
-                  {m.email}
-                </a>
-              </div>
-              <div className="flex items-center gap-4">
+        {filtered.map((m) => {
+          const busy = pendingId === m._id;
+          return (
+            <div
+              key={m._id}
+              className={cn(
+                "rounded-2xl border border-foreground/10 p-5 sm:p-6",
+                isUnread(m) ? "bg-accent-soft" : "bg-surface"
+              )}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1.5">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 font-medium text-foreground">
+                    {isUnread(m) && (
+                      <span className="size-2 flex-none rounded-full bg-accent" aria-label="Unread" />
+                    )}
+                    {m.name}
+                  </p>
+                  <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
+                    <a href={`mailto:${m.email}`} className="break-all text-accent">
+                      {m.email}
+                    </a>
+                    {m.phone && (
+                      <a href={`tel:${m.phone.replace(/[^\d+]/g, "")}`} className="text-accent">
+                        {m.phone}
+                      </a>
+                    )}
+                  </div>
+                </div>
                 <span className="text-xs font-light text-foreground/40">
                   {formatDate(m.createdAt)}
                 </span>
-                {!m.read && (
+              </div>
+
+              <p className="mt-3.5 whitespace-pre-wrap wrap-break-word text-sm font-light leading-relaxed text-foreground/55">
+                {m.message}
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-foreground/8 pt-3.5">
+                {m.status === "NEW" && (
                   <button
-                    onClick={() => markRead(m._id)}
-                    className="text-xs font-medium uppercase tracking-widest text-accent"
+                    onClick={() => changeStatus(m, "READ")}
+                    disabled={busy}
+                    className={cn(actionClass, "text-accent")}
                   >
                     Mark as read
                   </button>
                 )}
+                {m.status === "READ" && (
+                  <button
+                    onClick={() => changeStatus(m, "NEW")}
+                    disabled={busy}
+                    className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                  >
+                    Mark as unread
+                  </button>
+                )}
+                {m.status === "ARCHIVED" ? (
+                  <button
+                    onClick={() => changeStatus(m, "READ", "Moved back to inbox")}
+                    disabled={busy}
+                    className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                  >
+                    Unarchive
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => changeStatus(m, "ARCHIVED", "Message archived")}
+                    disabled={busy}
+                    className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                  >
+                    Archive
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(m)}
+                  disabled={busy}
+                  className={cn(actionClass, "text-red-400 hover:text-red-300")}
+                >
+                  Delete
+                </button>
               </div>
             </div>
-            <p className="mt-3.5 whitespace-pre-wrap text-sm font-light leading-relaxed text-foreground/55">
-              {m.message}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

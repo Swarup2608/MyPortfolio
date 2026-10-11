@@ -5,11 +5,11 @@ import { publicFetch, ApiError } from "@/lib/api";
 import type { PostListResponse } from "@/types/post";
 
 export async function LatestPosts() {
-  let posts: PostListResponse["posts"] = [];
+  let posts: PostListResponse["data"] = [];
 
   try {
     const data = await publicFetch<PostListResponse>("/posts?limit=3", { revalidate: 30 });
-    posts = data.posts;
+    posts = data.data;
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
   }
