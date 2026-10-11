@@ -152,9 +152,9 @@ export function Footer() {
       {/* oversized wordmark */}
       <div
         aria-hidden
-        className="pointer-events-none select-none overflow-hidden"
+        className="mb-8 pointer-events-none select-none overflow-hidden"
       >
-        <div className="-mb-[0.14em] bg-gradient-to-b from-foreground/[.14] to-foreground/0 bg-clip-text text-center text-[20vw] font-extrabold uppercase leading-none tracking-tight text-transparent">
+        <div className="-mb-[0.14em] bg-gradient-to-b from-foreground/[.8] to-foreground/[.1] bg-clip-text text-center text-[20vw] font-extrabold uppercase leading-none tracking-tight text-transparent sm:text-[16vw]">
           {firstName}
         </div>
       </div>

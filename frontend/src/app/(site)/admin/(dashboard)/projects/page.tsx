@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { usePermission } from "@/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/permissions";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { NoPermission } from "@/components/admin/NoPermission";
 import type { AdminProject, AdminProjectStatus } from "@/types/admin";
 
 interface AdminProjectsResponse {
@@ -75,7 +76,7 @@ export default function AllProjectsPage() {
   }
 
   if (!canRead) {
-    return <p className="text-foreground/40">You don&apos;t have access to this section.</p>;
+    return <NoPermission section="projects" />;
   }
 
   return (

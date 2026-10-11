@@ -72,8 +72,9 @@ export function AdminNav({ open, onClose }: { open: boolean; onClose: () => void
           </button>
         </div>
 
-        {links.map((link) => {
+        {visibleLinks.map((link) => {
           const active = pathname === link.href;
+          const badge = link.href === "/admin/messages" ? newMessageCount : 0;
           return (
             <Link
               key={link.href}
@@ -88,6 +89,11 @@ export function AdminNav({ open, onClose }: { open: boolean; onClose: () => void
             >
               <span className="w-4 flex-none text-center opacity-80">{link.icon}</span>
               {link.label}
+              {badge > 0 && (
+                <span className="ml-auto rounded-full bg-accent px-2 py-0.5 text-[.7rem] font-medium text-white">
+                  {badge}
+                </span>
+              )}
             </Link>
           );
         })}

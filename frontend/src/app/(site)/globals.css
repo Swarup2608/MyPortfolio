@@ -18,7 +18,7 @@
 }
 
 :root[data-theme="light"] {
-  --background: #ffffff;
+  --background: #f2f2f2;
   --foreground: #18181b;
   --surface: #fafafa;
   --surface-muted: #f4f4f5;
@@ -31,54 +31,6 @@
   --accent-soft: rgba(182, 0, 168, 0.08);
   --heading-gradient: linear-gradient(180deg, #18181b 0%, #52525b 100%);
   --cta-gradient: linear-gradient(123deg, #18011f 7%, #b600a8 37%, #7621b0 72%, #be4c00 100%);
-}
-
-:root[data-theme="monolithic"] {
-  --background: #000000;
-  --foreground: #ffffff;
-  --surface: #09090b;
-  --surface-muted: #18181b;
-  --border: rgba(255, 255, 255, 0.18);
-  --muted: rgba(255, 255, 255, 0.5);
-  --accent: #ffffff;
-  --accent-2: #d4d4d8;
-  --accent-3: #a1a1aa;
-  --accent-foreground: #000000;
-  --accent-soft: rgba(255, 255, 255, 0.08);
-  --heading-gradient: linear-gradient(180deg, #ffffff 0%, #a1a1aa 100%);
-  --cta-gradient: linear-gradient(123deg, #000000 0%, #d4d4d8 50%, #ffffff 100%);
-}
-
-:root[data-theme="high-contrast"] {
-  --background: #000000;
-  --foreground: #ffffff;
-  --surface: #000000;
-  --surface-muted: #0d0d0d;
-  --border: #ffffff;
-  --muted: #d9d9d9;
-  --accent: #ffff00;
-  --accent-2: #00ffff;
-  --accent-3: #ff00ff;
-  --accent-foreground: #000000;
-  --accent-soft: rgba(255, 255, 0, 0.18);
-  --heading-gradient: linear-gradient(180deg, #ffffff 0%, #ffff00 100%);
-  --cta-gradient: linear-gradient(123deg, #ffff00 0%, #ffff00 100%);
-}
-
-:root[data-theme="retro"] {
-  --background: #001100;
-  --foreground: #33ff33;
-  --surface: #001a00;
-  --surface-muted: #002400;
-  --border: rgba(51, 255, 51, 0.28);
-  --muted: rgba(51, 255, 51, 0.55);
-  --accent: #33ff33;
-  --accent-2: #00cc00;
-  --accent-3: #ffb000;
-  --accent-foreground: #001100;
-  --accent-soft: rgba(51, 255, 51, 0.12);
-  --heading-gradient: linear-gradient(180deg, #9dffa0 0%, #33ff33 100%);
-  --cta-gradient: linear-gradient(123deg, #001a00 7%, #33ff33 60%, #ffb000 100%);
 }
 
 :root[data-theme="solarized"] {
@@ -95,10 +47,6 @@
   --accent-soft: rgba(38, 139, 210, 0.14);
   --heading-gradient: linear-gradient(180deg, #93a1a1 0%, #268bd2 100%);
   --cta-gradient: linear-gradient(123deg, #073642 7%, #268bd2 45%, #2aa198 75%, #cb4b16 100%);
-}
-
-[data-theme="retro"] body {
-  font-family: var(--font-mono, ui-monospace, monospace);
 }
 
 @theme inline {
@@ -169,9 +117,21 @@ body {
   animation: marquee-right 55s linear infinite;
 }
 
+/* Used by the admin no-permission (403) screen. */
+@keyframes star-twinkle {
+  50% {
+    opacity: 0.1;
+  }
+}
+
+.animate-twinkle {
+  animation: star-twinkle 4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee-left,
-  .animate-marquee-right {
+  .animate-marquee-right,
+  .animate-twinkle {
     animation: none;
   }
 }
