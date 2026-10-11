@@ -6,7 +6,7 @@ import { SiteChrome } from "@/components/layout/SiteChrome";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { DialogProvider } from "@/components/ui/Dialog";
 import { siteConfig } from "@/lib/siteConfig";
-import { ThemeProvider, themeInitScript } from "@/lib/themeContext";
+import { ThemeProvider, ThemeInitScript } from "@/lib/themeContext";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
 const kanit = Kanit({
@@ -27,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${kanit.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ThemeInitScript />
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="shortcut icon" href="/favicon.ico" />

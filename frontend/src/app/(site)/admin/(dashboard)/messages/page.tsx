@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useDialog } from "@/components/ui/Dialog";
 import { usePermission } from "@/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/permissions";
+import { NoPermission } from "@/components/admin/NoPermission";
 import type { PaginatedResponse } from "@/types/api";
 
 type ContactStatus = "NEW" | "READ" | "ARCHIVED";
@@ -62,7 +63,10 @@ export default function AdminMessagesPage() {
   const [dateRange, setDateRange] = useState<DateRangeKey>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [now, setNow] = useState<number | null>(null);
+  const canRead = usePermission(PERMISSIONS.CONTACTS_READ);
   const canUpdate = usePermission(PERMISSIONS.CONTACTS_UPDATE);
+  const canDelete = usePermission(PERMISSIONS.CONTACTS_DELETE);
+  const [forbidden, setForbidden] = useState(false);
 
   const [showCustom, setShowCustom] = useState(false);
   const [customFrom, setCustomFrom] = useState("");
@@ -85,12 +89,17 @@ export default function AdminMessagesPage() {
   function load() {
     adminFetch<PaginatedResponse<ContactMessage>>("/admin/contact?limit=50")
       .then((data) => setMessages(data.data))
-      .catch((err) =>
-        setError(err instanceof ApiError ? err.message : "Failed to load messages")
-      );
+      .catch((err) => {
+        // The server is the source of truth: if it refuses, show the 403 screen
+        // rather than its raw error message.
+        if (err instanceof ApiError && err.status === 403) setForbidden(true);
+        else setError(err instanceof ApiError ? err.message : "Failed to load messages");
+      });
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    if (canRead) load();
+  }, [canRead]);
 
   async function changeStatus(m: ContactMessage, status: ContactStatus, successText?: string) {
     setPendingId(m._id);
@@ -158,6 +167,10 @@ export default function AdminMessagesPage() {
     [messages]
   );
   const newCount = counts.unread;
+
+  if (!canRead || forbidden) {
+    return <NoPermission section="messages" />;
+  }
 
   return (
     <div>
@@ -341,9 +354,9 @@ export default function AdminMessagesPage() {
                 {m.message}
               </p>
 
-              {canUpdate && (
+              {(canUpdate || canDelete) && (
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-foreground/8 pt-3.5">
-                {m.status === "NEW" && (
+                {canUpdate && m.status === "NEW" && (
                   <button
                     onClick={() => changeStatus(m, "READ")}
                     disabled={busy}
@@ -352,7 +365,7 @@ export default function AdminMessagesPage() {
                     Mark as read
                   </button>
                 )}
-                {m.status === "READ" && (
+                {canUpdate && m.status === "READ" && (
                   <button
                     onClick={() => changeStatus(m, "NEW")}
                     disabled={busy}
@@ -361,30 +374,33 @@ export default function AdminMessagesPage() {
                     Mark as unread
                   </button>
                 )}
-                {m.status === "ARCHIVED" ? (
+                {canUpdate &&
+                  (m.status === "ARCHIVED" ? (
+                    <button
+                      onClick={() => changeStatus(m, "READ", "Moved back to inbox")}
+                      disabled={busy}
+                      className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                    >
+                      Unarchive
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => changeStatus(m, "ARCHIVED", "Message archived")}
+                      disabled={busy}
+                      className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                    >
+                      Archive
+                    </button>
+                  ))}
+                {canDelete && (
                   <button
-                    onClick={() => changeStatus(m, "READ", "Moved back to inbox")}
+                    onClick={() => handleDelete(m)}
                     disabled={busy}
-                    className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
+                    className={cn(actionClass, "text-red-400 hover:text-red-300")}
                   >
-                    Unarchive
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => changeStatus(m, "ARCHIVED", "Message archived")}
-                    disabled={busy}
-                    className={cn(actionClass, "text-foreground/55 hover:text-foreground")}
-                  >
-                    Archive
+                    Delete
                   </button>
                 )}
-                <button
-                  onClick={() => handleDelete(m)}
-                  disabled={busy}
-                  className={cn(actionClass, "text-red-400 hover:text-red-300")}
-                >
-                  Delete
-                </button>
               </div>
               )}
             </div>

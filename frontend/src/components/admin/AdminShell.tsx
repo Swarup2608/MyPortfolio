@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { useAdminAuth } from "@/lib/adminAuthContext";
+import { PERMISSIONS, hasPermission } from "@/lib/permissions";
 
 const crumbs: Record<string, string> = {
   "/admin": "Dashboard",
@@ -72,20 +73,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <span className="hidden rounded-full border border-foreground/12 px-3.5 py-1.5 text-xs font-light text-foreground/45 sm:inline-block">
               ⌘K
             </span>
-            <Link
-              href="/admin/posts/new"
-              className="gradient-cta rounded-full px-3.5 py-2 text-xs font-medium uppercase tracking-widest text-white sm:px-4.5"
-            >
-              <span className="sm:hidden">+ Post</span>
-              <span className="hidden sm:inline">New post</span>
-            </Link>
-            <Link
-              href="/admin/projects/new"
-              className="gradient-cta rounded-full px-3.5 py-2 text-xs font-medium uppercase tracking-widest text-white sm:px-4.5"
-            >
-              <span className="sm:hidden">+ Project</span>
-              <span className="hidden sm:inline">New project</span>
-            </Link>
+            {hasPermission(user.role, PERMISSIONS.POSTS_CREATE) && (
+              <Link
+                href="/admin/posts/new"
+                className="gradient-cta rounded-full px-3.5 py-2 text-xs font-medium uppercase tracking-widest text-white sm:px-4.5"
+              >
+                <span className="sm:hidden">+ Post</span>
+                <span className="hidden sm:inline">New post</span>
+              </Link>
+            )}
+            {hasPermission(user.role, PERMISSIONS.PROJECTS_CREATE) && (
+              <Link
+                href="/admin/projects/new"
+                className="gradient-cta rounded-full px-3.5 py-2 text-xs font-medium uppercase tracking-widest text-white sm:px-4.5"
+              >
+                <span className="sm:hidden">+ Project</span>
+                <span className="hidden sm:inline">New project</span>
+              </Link>
+            )}
           </div>
         </div>
         <main className="px-4 py-6 sm:px-8 sm:py-10">{children}</main>

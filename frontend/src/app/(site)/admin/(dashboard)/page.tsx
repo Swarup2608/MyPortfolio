@@ -8,6 +8,8 @@ import type { PaginatedResponse } from "@/types/api";
 import type { PostListItem, PostListResponse } from "@/types/post";
 import type { Project, ProjectListResponse } from "@/types/project";
 import { TrafficOverview } from "@/components/admin/TrafficOverview";
+import { usePermission } from "@/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/permissions";
 
 const statusColor = (status?: string) =>
   status === "PUBLISHED" ? "#4ade80" : "rgba(215,226,234,.5)";
@@ -46,6 +48,9 @@ export default function AdminDashboardPage() {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [messages, setMessages] = useState<ContactMessage[] | null>(null);
   const [error, setError] = useState("");
+  const canReadMessages = usePermission(PERMISSIONS.CONTACTS_READ);
+  const canCreatePosts = usePermission(PERMISSIONS.POSTS_CREATE);
+  const canCreateProjects = usePermission(PERMISSIONS.PROJECTS_CREATE);
 
   useEffect(() => {
     adminFetch<PostListResponse>("/admin/posts?limit=100")
@@ -54,10 +59,14 @@ export default function AdminDashboardPage() {
     adminFetch<ProjectListResponse>("/admin/projects")
       .then((data) => setProjects(data.data))
       .catch(() => setProjects([]));
+  }, []);
+
+  useEffect(() => {
+    if (!canReadMessages) return;
     adminFetch<PaginatedResponse<ContactMessage>>("/admin/contact?limit=5")
       .then((data) => setMessages(data.data))
       .catch(() => setMessages([]));
-  }, []);
+  }, [canReadMessages]);
 
   const stats = useMemo(() => {
     if (!posts) return null;
@@ -139,23 +148,25 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="mt-5 grid gap-4.5 lg:grid-cols-2">
-        <div className="rounded-3xl border border-foreground/10 bg-surface p-6">
-          <div className="mb-3.5 text-base font-semibold text-foreground">Recent messages</div>
-          {messages && messages.length === 0 && (
-            <p className="text-sm font-light text-foreground/35">No messages yet.</p>
-          )}
-          {messages?.map((m) => (
-            <div
-              key={m._id}
-              className="flex justify-between gap-3 border-b border-foreground/5 py-2.5 last:border-b-0"
-            >
-              <span className="truncate text-sm font-light text-foreground/85">{m.name}</span>
-              <span className="flex-none text-xs font-light text-foreground/35">
-                {formatDate(m.createdAt)}
-              </span>
-            </div>
-          ))}
-        </div>
+        {canReadMessages && (
+          <div className="rounded-3xl border border-foreground/10 bg-surface p-6">
+            <div className="mb-3.5 text-base font-semibold text-foreground">Recent messages</div>
+            {messages && messages.length === 0 && (
+              <p className="text-sm font-light text-foreground/35">No messages yet.</p>
+            )}
+            {messages?.map((m) => (
+              <div
+                key={m._id}
+                className="flex justify-between gap-3 border-b border-foreground/5 py-2.5 last:border-b-0"
+              >
+                <span className="truncate text-sm font-light text-foreground/85">{m.name}</span>
+                <span className="flex-none text-xs font-light text-foreground/35">
+                  {formatDate(m.createdAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="rounded-3xl border border-foreground/10 bg-surface p-6">
           <div className="mb-3.5 text-base font-semibold text-foreground">Top posts by views</div>
@@ -188,12 +199,14 @@ export default function AdminDashboardPage() {
             </Link>
           ))}
           <div className="mt-4 flex gap-2.5">
-            <Link
-              href="/admin/posts/new"
-              className="rounded-full border border-accent/40 bg-accent-soft px-4 py-2.5 text-xs font-light text-foreground"
-            >
-              + New post
-            </Link>
+            {canCreatePosts && (
+              <Link
+                href="/admin/posts/new"
+                className="rounded-full border border-accent/40 bg-accent-soft px-4 py-2.5 text-xs font-light text-foreground"
+              >
+                + New post
+              </Link>
+            )}
             <Link
               href="/admin/analytics"
               className="rounded-full border border-foreground/15 px-4 py-2.5 text-xs font-light text-foreground"
@@ -221,12 +234,14 @@ export default function AdminDashboardPage() {
             </Link>
           ))}
           <div className="mt-4 flex gap-2.5">
-            <Link
-              href="/admin/projects/new"
-              className="rounded-full border border-accent/40 bg-accent-soft px-4 py-2.5 text-xs font-light text-foreground"
-            >
-              + New project
-            </Link>
+            {canCreateProjects && (
+              <Link
+                href="/admin/projects/new"
+                className="rounded-full border border-accent/40 bg-accent-soft px-4 py-2.5 text-xs font-light text-foreground"
+              >
+                + New project
+              </Link>
+            )}
             <Link
               href="/admin/projects"
               className="rounded-full border border-foreground/15 px-4 py-2.5 text-xs font-light text-foreground"

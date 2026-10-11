@@ -33,22 +33,6 @@
   --cta-gradient: linear-gradient(123deg, #18011f 7%, #b600a8 37%, #7621b0 72%, #be4c00 100%);
 }
 
-:root[data-theme="solarized"] {
-  --background: #002b36;
-  --foreground: #839496;
-  --surface: #073642;
-  --surface-muted: #0a4152;
-  --border: rgba(88, 110, 117, 0.4);
-  --muted: rgba(101, 123, 131, 0.75);
-  --accent: #268bd2;
-  --accent-2: #2aa198;
-  --accent-3: #cb4b16;
-  --accent-foreground: #fdf6e3;
-  --accent-soft: rgba(38, 139, 210, 0.14);
-  --heading-gradient: linear-gradient(180deg, #93a1a1 0%, #268bd2 100%);
-  --cta-gradient: linear-gradient(123deg, #073642 7%, #268bd2 45%, #2aa198 75%, #cb4b16 100%);
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
