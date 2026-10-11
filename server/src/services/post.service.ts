@@ -81,9 +81,6 @@ export async function updatePost(postId: string, input:UpdatePostInput){
         post.readingTimeInMinutes = readingTime(input.content);
     }
     await post.save();
-
-    await cleanupOldImage(previousCoverImageKey, post.coverImage?.key);
-
     return post;
 }
 
@@ -93,10 +90,7 @@ export async function deletePost(postId: string){
     if(!post){
         throw new AppError("[post] Post not found",404);
     }
-    const coverImageKey = post.coverImage?.key;
     await post.deleteOne();
-
-    await cleanupOldImage(coverImageKey, undefined);
 }
 
 export async function changePostStatus(postId: string, status: PostStatus){

@@ -11,7 +11,6 @@ import { TrafficOverview } from "@/components/admin/TrafficOverview";
 
 const statusColor = (status?: string) =>
   status === "PUBLISHED" ? "#4ade80" : "rgba(215,226,234,.5)";
-  status === "PUBLISHED" ? "#4ade80" : "rgba(215,226,234,.5)";
 
 // How many posts were published in each of the last 12 months.
 function publishedByMonth(posts: PostListItem[]) {
@@ -35,14 +34,11 @@ function publishedByMonth(posts: PostListItem[]) {
   }));
 }
 
-interface AdminPostsResponse {
-  success: true;
-  data: AdminPost[];
-}
-
-interface AdminContactsResponse {
-  success: true;
-  data: AdminContact[];
+interface ContactMessage {
+  _id: string;
+  name: string;
+  email: string;
+  createdAt: string;
 }
 
 export default function AdminDashboardPage() {
@@ -67,9 +63,6 @@ export default function AdminDashboardPage() {
     if (!posts) return null;
     return {
       total: posts.length,
-      published: posts.filter((p) => p.status === "PUBLISHED").length,
-      draft: posts.filter((p) => p.status === "DRAFT").length,
-      views: posts.reduce((sum, p) => sum + (p.viewCount ?? 0), 0),
       published: posts.filter((p) => p.status === "PUBLISHED").length,
       draft: posts.filter((p) => p.status === "DRAFT").length,
       views: posts.reduce((sum, p) => sum + (p.viewCount ?? 0), 0),
@@ -175,7 +168,6 @@ export default function AdminDashboardPage() {
               className="flex justify-between gap-3 border-b border-foreground/5 py-2.5 last:border-b-0"
             >
               <span className="truncate text-sm font-light text-foreground/85">{p.title}</span>
-              <span className="flex-none text-xs font-light text-foreground/35">{p.viewCount ?? 0}</span>
               <span className="flex-none text-xs font-light text-foreground/35">{p.viewCount ?? 0}</span>
             </div>
           ))}

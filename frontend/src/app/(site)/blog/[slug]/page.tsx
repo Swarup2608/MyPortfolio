@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { Badge } from "@/components/ui/Badge";
 import { MarkdownContent } from "@/components/blog/MarkdownContent";
-import { BlogViewTracker } from "@/components/analytics/BlogViewTracker";
 import { formatDate } from "@/lib/utils";
 import { publicFetch, ApiError } from "@/lib/api";
 import type { PostResponse } from "@/types/post";
@@ -28,12 +27,20 @@ export async function generateMetadata({
   const post = await getPost(slug);
   if (!post) return {};
 
-  const title = post.seoTitle || post.title;
-  const description = post.seoDescription || post.excerpt;
+  const title = post.seo?.title || post.title;
+  const description = post.seo?.description || post.excerpt;
 
   return {
-    title: post.seo?.title || post.title,
-    description: post.seo?.description || post.excerpt,
+    title,
+    description,
+    keywords: post.seo?.keywords?.length ? post.seo.keywords : undefined,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      publishedTime: post.publishedAt ?? undefined,
+      images: post.coverImage?.url ? [post.coverImage.url] : undefined,
+    },
   };
 }
 
@@ -48,13 +55,11 @@ export default async function BlogPostPage({
 
   return (
     <Container className="max-w-3xl py-16 sm:py-20">
-      <BlogViewTracker postId={post._id} />
       <Link href="/blog" className="text-sm font-light text-foreground/50 hover:text-foreground">
         ← All posts
       </Link>
 
       {post.coverImage?.url && (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.coverImage.url}
           alt={post.coverImage.alt}

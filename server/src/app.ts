@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { corsOptions } from "./config/cors.js";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js";
+import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 import { notFoundHandler } from "./middleware/not-found.middleware.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import helmet from "helmet";
@@ -19,12 +20,15 @@ import adminUserRoutes from "./routes/admin-user.routes.js";
 import mediaRoutes from "./routes/media.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import adminAnalyticsRoutes from "./routes/admin-analytics.routes.js";
+import adminAuditRoutes from "./routes/admin-audit.routes.js";
 import { LOCAL_UPLOAD_PATH } from "./services/storage/local.storage.js";
 
 const app = express();
 
 // Behind one proxy (Render, Railway, Nginx...) so rate limiting and IP hashing see the real client IP.
 app.set("trust proxy", 1);
+
+app.use(requestIdMiddleware);
 
 app.use(helmet({crossOriginResourcePolicy: { policy: "cross-origin",}}));
 
@@ -67,6 +71,7 @@ app.use("/api/admin/contact",adminContactRoutes);
 app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/analytics",analyticsRoutes);
 app.use("/api/admin/analytics",adminAnalyticsRoutes);
+app.use("/api/admin/audit-logs", adminAuditRoutes);
 
 // Must stay last: anything that reaches these did not match a route above.
 app.use(notFoundHandler);

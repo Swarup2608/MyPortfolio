@@ -13,7 +13,7 @@ function HashIp(ip: string): string{
 
 export async function createContact(input: Omit<CreateContactInput, "website">, metadata: {ip: string, userAgent?: string;}){
     const contact = await Contact.create({
-        ...contactData, ipHash: hashIp(metadata.ip), userAgent: metadata.userAgent
+        ...input, ipHash: HashIp(metadata.ip), userAgent: metadata.userAgent
     });
     return contact;
 }

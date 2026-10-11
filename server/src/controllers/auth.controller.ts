@@ -6,6 +6,7 @@ import {env} from "../config/env.js";
 import {Types} from "mongoose";
 import type {AuthenticatedRequest} from "../middleware/auth.middleware.js";
 import {CSRF_COOKIE} from "./csrf.controller.js";
+import { createAuditLog } from "../services/audit.service.js";
 
 
 // Login controller - Will verify if the user exists and if the password is correct, then generate a JWT token and send it back to the client via a cookie. The token will be used for authentication in subsequent requests.

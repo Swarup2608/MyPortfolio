@@ -8,8 +8,10 @@ import { ImageUploader } from "@/components/admin/ImageUploader";
 import { MarkdownEditor } from "@/components/admin/MarkdownEditor";
 import { adminFetch } from "@/lib/adminApi";
 import { ApiError } from "@/lib/api";
-import type { ApiResponse } from "@/types/api";
-import type { CoverImage, Post, PostStatus } from "@/types/post";
+import { slugify } from "@/lib/utils";
+import { usePermission } from "@/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/permissions";
+import type { AdminPost, AdminPostStatus } from "@/types/admin";
 
 const fieldClass =
   "mt-2 w-full rounded-2xl border border-foreground/15 bg-foreground/5 px-4 py-3.5 text-sm text-foreground outline-none transition-colors focus:border-accent";
@@ -31,11 +33,15 @@ export function PostForm({ post }: { post?: AdminPost }) {
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [content, setContent] = useState(post?.content ?? "");
-  const [coverImage, setCoverImage] = useState<CoverImage | null>(post?.coverImage ?? null);
+  const [coverImage, setCoverImage] = useState(post?.coverImage?.url ?? "");
+  const [coverImageKey, setCoverImageKey] = useState(post?.coverImage?.key ?? "");
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
-  const [tags, setTags] = useState((post?.tags ?? []).join(", "));
-  const [status, setStatus] = useState<PostStatus>(post?.status ?? "DRAFT");
-  const [showPreview, setShowPreview] = useState(false);
+  const [tags, setTags] = useState<string[]>(post?.tags ?? []);
+  const [tagInput, setTagInput] = useState("");
+  const [category, setCategory] = useState(post?.category ?? "");
+  const [seoTitle, setSeoTitle] = useState(post?.seo?.title ?? "");
+  const [seoDescription, setSeoDescription] = useState(post?.seo?.description ?? "");
+  const [status, setStatus] = useState<AdminPostStatus>(post?.status ?? "DRAFT");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -72,11 +78,11 @@ export function PostForm({ post }: { post?: AdminPost }) {
       if (coverImageFile) {
         const formData = new FormData();
         formData.append("image", coverImageFile);
-        const uploaded = await adminFetch<ApiResponse<{ url: string; key: string }>>(
-          "/admin/media",
-          { method: "POST", body: formData }
-        );
-        finalCoverImage = { ...uploaded.data, alt: "" };
+        const uploaded = await adminFetch<UploadResponse>("/admin/media", {
+          method: "POST",
+          body: formData,
+        });
+        finalCoverImage = { url: uploaded.data.url, key: uploaded.data.key, alt: title };
       }
 
       const contentBody = {
@@ -84,19 +90,24 @@ export function PostForm({ post }: { post?: AdminPost }) {
         slug,
         excerpt,
         content,
-        tags: tags
-          .split(",")
-          .map((t) => t.trim().toLowerCase())
-          .filter(Boolean),
+        coverImage: finalCoverImage,
+        tags,
+        category: category.trim() || undefined,
+        seo: {
+          title: seoTitle.trim() || undefined,
+          description: seoDescription.trim() || undefined,
+          keywords: post?.seo?.keywords ?? [],
+        },
       };
 
       if (isEdit && post) {
+        // The update endpoint doesn't accept status changes — that's a
+        // separate call so an editor can't slip a publish through a normal save.
         // coverImage: null tells the server to remove the existing image.
         await adminFetch(`/admin/posts/${post._id}`, {
           method: "PATCH",
-          body: JSON.stringify({ ...body, coverImage: finalCoverImage }),
+          body: JSON.stringify({ ...contentBody, coverImage: finalCoverImage ?? null }),
         });
-        // Publishing is a separate permission on the server, so status has its own endpoint.
         if (status !== post.status) {
           await adminFetch(`/admin/posts/${post._id}/status`, {
             method: "PATCH",
@@ -106,7 +117,7 @@ export function PostForm({ post }: { post?: AdminPost }) {
       } else {
         await adminFetch("/admin/posts", {
           method: "POST",
-          body: JSON.stringify({ ...body, status, coverImage: finalCoverImage ?? undefined }),
+          body: JSON.stringify({ ...contentBody, status }),
         });
       }
       router.push("/admin/posts");
@@ -140,7 +151,6 @@ export function PostForm({ post }: { post?: AdminPost }) {
                 : "Saving…"
               : isEdit
                 ? "Save changes"
-                : status === "PUBLISHED"
                 : status === "PUBLISHED"
                   ? "Publish"
                   : "Save draft"}
@@ -243,12 +253,13 @@ export function PostForm({ post }: { post?: AdminPost }) {
           <div className={cardClass}>
             <div className="mb-4 text-sm font-semibold text-foreground">Cover image</div>
             <ImageUploader
-              existingUrl={coverImage?.url ?? ""}
+              existingUrl={coverImage}
               file={coverImageFile}
               onFileSelected={setCoverImageFile}
               onRemove={() => {
                 setCoverImageFile(null);
-                setCoverImage(null);
+                setCoverImage("");
+                setCoverImageKey("");
               }}
             />
           </div>
@@ -264,9 +275,6 @@ export function PostForm({ post }: { post?: AdminPost }) {
               onChange={(e) => setStatus(e.target.value as AdminPostStatus)}
               className={`${fieldClass} disabled:opacity-50`}
             >
-              <option value="DRAFT">Draft</option>
-              <option value="PUBLISHED">Published</option>
-              <option value="ARCHIVED">Archived</option>
               <option value="DRAFT">Draft</option>
               <option value="PUBLISHED">Published</option>
               <option value="ARCHIVED">Archived</option>

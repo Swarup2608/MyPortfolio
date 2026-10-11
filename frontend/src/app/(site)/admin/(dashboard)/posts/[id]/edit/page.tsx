@@ -17,7 +17,7 @@ export default function EditPostPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    adminFetch<PostResponse>(`/admin/posts/${params.id}`)
+    adminFetch<AdminPostResponse>(`/admin/posts/${params.id}`)
       .then((data) => setPost(data.data))
       .catch(() => setError("Post not found"));
   }, [params.id]);

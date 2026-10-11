@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Kanit } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { SiteChrome } from "@/components/layout/SiteChrome";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { DialogProvider } from "@/components/ui/Dialog";
 import { siteConfig } from "@/lib/siteConfig";
 import { ThemeProvider, themeInitScript } from "@/lib/themeContext";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
@@ -37,9 +37,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <ThemeProvider>
           <PageViewTracker />
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <DialogProvider>
+            <SiteChrome>{children}</SiteChrome>
+          </DialogProvider>
           <ThemeSwitcher />
           <Toaster
             position="bottom-center"

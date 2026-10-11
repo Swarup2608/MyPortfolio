@@ -7,6 +7,8 @@ import { adminFetch } from "@/lib/adminApi";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useDialog } from "@/components/ui/Dialog";
+import { usePermission } from "@/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/permissions";
 import type { PaginatedResponse } from "@/types/api";
 
 type ContactStatus = "NEW" | "READ" | "ARCHIVED";
@@ -47,13 +49,6 @@ const DATE_RANGES = [
   { key: "30", label: "30 days" },
   { key: "90", label: "90 days" },
 ] as const;
-
-const STATUS_FILTERS: { key: "ALL" | ContactStatus; label: string }[] = [
-  { key: "ALL", label: "All" },
-  { key: "NEW", label: "New" },
-  { key: "READ", label: "Read" },
-  { key: "ARCHIVED", label: "Archived" },
-];
 
 type DateRangeKey = (typeof DATE_RANGES)[number]["key"] | "custom";
 type SortOrder = "newest" | "oldest";
@@ -162,6 +157,7 @@ export default function AdminMessagesPage() {
     }),
     [messages]
   );
+  const newCount = counts.unread;
 
   return (
     <div>
@@ -345,6 +341,7 @@ export default function AdminMessagesPage() {
                 {m.message}
               </p>
 
+              {canUpdate && (
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-foreground/8 pt-3.5">
                 {m.status === "NEW" && (
                   <button
@@ -389,6 +386,7 @@ export default function AdminMessagesPage() {
                   Delete
                 </button>
               </div>
+              )}
             </div>
           );
         })}

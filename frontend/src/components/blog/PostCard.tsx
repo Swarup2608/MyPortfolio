@@ -6,7 +6,6 @@ export function PostCard({ post }: { post: PostListItem }) {
   return (
     <Link href={`/blog/${post.slug}`} className="group block">
       {post.coverImage?.url !== undefined ?  (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.coverImage.url}
           alt={post.coverImage.alt}

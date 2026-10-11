@@ -71,7 +71,6 @@ export default function AboutPage() {
           className="aspect-square w-full max-w-105 justify-self-center rounded-4xl"
           style={{ background: "linear-gradient(160deg, #B600A8 0%, #18011F 55%, #BE4C00 100%)" }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/Home.png"
             alt=""

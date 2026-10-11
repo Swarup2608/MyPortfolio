@@ -14,8 +14,6 @@ const crumbs: Record<string, string> = {
   "/admin/posts/new": "New post",
   "/admin/projects": "All projects",
   "/admin/projects/new": "New project",
-  "/admin/projects": "All projects",
-  "/admin/projects/new": "New project",
   "/admin/messages": "Messages",
   "/admin/users": "Users",
   "/admin/users/new": "New user",

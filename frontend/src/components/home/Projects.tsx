@@ -76,7 +76,6 @@ function ProjectCard({ project, index }: { project: PublicProject; index: number
         </p>
 
         {project.image?.url ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={project.image.url}
             alt={project.image.alt || ""}

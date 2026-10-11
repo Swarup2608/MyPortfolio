@@ -10,12 +10,14 @@ import { PERMISSIONS, hasPermission, type Permission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { AdminContact } from "@/types/admin";
 
-const links = [
-  { href: "/admin", label: "Dashboard", icon: "▤" },
-  { href: "/admin/analytics", label: "Analytics", icon: "◔" },
-  { href: "/admin/posts", label: "All posts", icon: "☰" },
-  { href: "/admin/projects", label: "All projects", icon: "◫" },
-  { href: "/admin/messages", label: "Messages", icon: "✉" },
+const links: { href: string; label: string; icon: string; permission: Permission }[] = [
+  { href: "/admin", label: "Dashboard", icon: "▤", permission: PERMISSIONS.DASHBOARD_READ },
+  { href: "/admin/analytics", label: "Analytics", icon: "◔", permission: PERMISSIONS.ANALYTICS_READ },
+  { href: "/admin/posts", label: "All posts", icon: "☰", permission: PERMISSIONS.POSTS_READ },
+  { href: "/admin/projects", label: "All projects", icon: "◫", permission: PERMISSIONS.PROJECTS_READ },
+  { href: "/admin/messages", label: "Messages", icon: "✉", permission: PERMISSIONS.CONTACTS_READ },
+  { href: "/admin/users", label: "Users", icon: "☺", permission: PERMISSIONS.USERS_READ },
+  { href: "/admin/audit-logs", label: "Audit logs", icon: "≡", permission: PERMISSIONS.AUDIT_LOG_READ },
 ];
 
 // Docked on large screens; below lg it's an off-canvas drawer opened from the top bar.
