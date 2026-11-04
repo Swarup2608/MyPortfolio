@@ -15,7 +15,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     if(!token){
         res.status(401).json({
             success: false,
-            message: "[auth] Access token is missing",
+            message: "[auth1]  Access token is missing",
         });
         return;
     }
