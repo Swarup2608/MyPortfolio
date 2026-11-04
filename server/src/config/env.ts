@@ -42,4 +42,16 @@ if(!parsedEnv.success) {
     process.exit(1);
 }
 
+// Browsers reject SameSite=None cookies that aren't Secure.
+if (parsedEnv.data.COOKIE_SAMESITE === "none" && !parsedEnv.data.COOKIE_SECURE) {
+    console.error("[server] COOKIE_SAMESITE=none requires COOKIE_SECURE=true.");
+    process.exit(1);
+}
+
+// With a frontend on a different site than this API, Lax cookies are never sent
+// on fetch() calls, so /auth/me returns 401 and admin login bounces back.
+if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.COOKIE_SAMESITE === "lax") {
+    console.warn("[server] COOKIE_SAMESITE=lax in production: cookies won't be sent if the frontend is on a different site than this API.");
+}
+
 export const env = parsedEnv.data;
