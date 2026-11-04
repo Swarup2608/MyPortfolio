@@ -1,4 +1,8 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+// Server components call the backend directly. The browser goes through the
+// same-origin /api rewrite in next.config.ts so cookies stay first-party.
+export const API_URL = typeof window === "undefined" ? BACKEND_API_URL : "/api";
 
 export class ApiError extends Error {
   status: number;
