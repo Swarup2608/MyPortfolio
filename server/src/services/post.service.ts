@@ -7,6 +7,8 @@ import { validateObjectId } from "../utils/object-id.js";
 import { paginate } from "../utils/pagination.js";
 import { readingTime } from "../utils/reading-time.js";
 import { slugify } from "../utils/slugify.js";
+import { promoteLocalImages } from "./storage/promote.js";
+import { mediaKeysOf, syncMedia } from "./media.service.js";
 
 const PUBLIC_LIST_FIELDS = "title slug excerpt coverImage tags category publishedAt readingTimeInMinutes viewCount";
 
@@ -31,13 +33,17 @@ export async function createPost(input: CreatePostInput,authorId: string){
         slug = await uniqueSlugFromTitle(input.title);
     }
 
+    // Move images uploaded to local disk while editing to the cloud, rewriting their URLs.
+    const { input: finalInput, cleanup } = await promoteLocalImages(input);
     const post = await Post.create({
-        ...input,
+        ...finalInput,
         slug,
         author: authorId,
-        readingTimeInMinutes: readingTime(input.content),
-        ...(input.status === "PUBLISHED" ? { publishedAt: new Date() } : {}),
+        readingTimeInMinutes: readingTime(finalInput.content),
+        ...(finalInput.status === "PUBLISHED" ? { publishedAt: new Date() } : {}),
     });
+    await cleanup();
+    await syncMedia(new Set(), mediaKeysOf(post.content, post.coverImage?.key));
     return post;
 }
 
@@ -70,17 +76,22 @@ export async function updatePost(postId: string, input:UpdatePostInput){
             throw new AppError("[post] A post with this slug already exists",409);
         }
     }
-    const { coverImage, ...fields } = input;
+    const mediaBefore = mediaKeysOf(post.content, post.coverImage?.key);
+    // Move images uploaded to local disk while editing to the cloud, rewriting their URLs.
+    const { input: finalInput, cleanup } = await promoteLocalImages(input);
+    const { coverImage, ...fields } = finalInput;
     Object.assign(post,fields);
     if(coverImage === null){
         post.coverImage = undefined;
     }else if(coverImage){
         post.coverImage = coverImage;
     }
-    if(input.content !== undefined){
-        post.readingTimeInMinutes = readingTime(input.content);
+    if(finalInput.content !== undefined){
+        post.readingTimeInMinutes = readingTime(finalInput.content);
     }
     await post.save();
+    await cleanup();
+    await syncMedia(mediaBefore, mediaKeysOf(post.content, post.coverImage?.key));
     return post;
 }
 
@@ -90,7 +101,9 @@ export async function deletePost(postId: string){
     if(!post){
         throw new AppError("[post] Post not found",404);
     }
+    const mediaBefore = mediaKeysOf(post.content, post.coverImage?.key);
     await post.deleteOne();
+    await syncMedia(mediaBefore, new Set());
 }
 
 export async function changePostStatus(postId: string, status: PostStatus){

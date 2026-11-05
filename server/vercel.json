@@ -5,6 +5,12 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/internal/cleanup-media",
+      "schedule": "0 3 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",

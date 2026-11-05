@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { z } from "zod";
 
-const R2_KEYS = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_PUBLIC_URL"] as const;
+const R2_KEYS = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_URL"] as const;
 
 const envSchema = z.object({
     NODE_ENV : z.enum(["development","production","test"]).default("development"),
@@ -18,12 +18,17 @@ const envSchema = z.object({
     JWT_EXPIRES_IN : z.string().default("8h"),
     COOKIE_SAMESITE : z.enum(["lax","strict","none"]).default("lax"),
     COOKIE_SECURE : z.stringbool().default(false),
+    // Protects /api/internal/* (the scheduled media cleanup). Unset = those routes are disabled.
+    CRON_SECRET : z.preprocess(
+        (value) => (value === "" ? undefined : value),
+        z.string().min(16, "[server] CRON_SECRET must be at least 16 characters").optional(),
+    ),
     STORAGE_DRIVER : z.enum(["local","r2"]).default("local"),
     LOCAL_UPLOAD_DIR : z.string().default("uploads"),
     R2_ACCOUNT_ID : z.string().default(""),
     R2_ACCESS_KEY_ID : z.string().default(""),
     R2_SECRET_ACCESS_KEY : z.string().default(""),
-    R2_BUCKET : z.string().default(""),
+    R2_BUCKET_NAME : z.string().default(""),
     R2_PUBLIC_URL : z.string().default("").transform((value) => value.replace(/\/$/, "")),
 }).superRefine((env, ctx) => {
     if (env.STORAGE_DRIVER !== "r2") return;
@@ -40,6 +45,12 @@ if(!parsedEnv.success) {
     console.error("[server] Invalid environment variables:", parsedEnv.error.flatten().fieldErrors);
     console.error("[server] Please check your .env file and ensure all required variables are set correctly.");
     process.exit(1);
+}
+
+// Local disk is wiped between serverless invocations and its URLs point at this server,
+// so uploaded images would break in production. Use STORAGE_DRIVER=r2 there.
+if (parsedEnv.data.NODE_ENV === "production" && parsedEnv.data.STORAGE_DRIVER === "local") {
+    console.warn("[server] STORAGE_DRIVER=local in production: uploaded images are not persisted. Set STORAGE_DRIVER=r2 and the R2_* variables.");
 }
 
 // Browsers reject SameSite=None cookies that aren't Secure.

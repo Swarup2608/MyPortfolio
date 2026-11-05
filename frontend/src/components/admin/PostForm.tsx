@@ -10,6 +10,7 @@ import { adminFetch } from "@/lib/adminApi";
 import { ApiError } from "@/lib/api";
 import { slugify } from "@/lib/utils";
 import { usePermission } from "@/hooks/usePermission";
+import { useUploadSession } from "@/lib/useUploadSession";
 import { PERMISSIONS } from "@/lib/permissions";
 import type { AdminPost, AdminPostStatus } from "@/types/admin";
 
@@ -36,6 +37,8 @@ export function PostForm({ post }: { post?: AdminPost }) {
   const [coverImage, setCoverImage] = useState(post?.coverImage?.url ?? "");
   const [coverImageKey, setCoverImageKey] = useState(post?.coverImage?.key ?? "");
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  // Tracks images uploaded in this session so unsaved ones are deleted on refresh/leave.
+  const uploads = useUploadSession();
   const [tags, setTags] = useState<string[]>(post?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [category, setCategory] = useState(post?.category ?? "");
@@ -82,6 +85,7 @@ export function PostForm({ post }: { post?: AdminPost }) {
           method: "POST",
           body: formData,
         });
+        uploads.track(uploaded.data.key);
         finalCoverImage = { url: uploaded.data.url, key: uploaded.data.key, alt: title };
       }
 
@@ -120,6 +124,8 @@ export function PostForm({ post }: { post?: AdminPost }) {
           body: JSON.stringify({ ...contentBody, status }),
         });
       }
+      // Saved images are now attached to the post; this clears the ones removed from the content.
+      uploads.flush();
       router.push("/admin/posts");
       router.refresh();
     } catch (err) {
@@ -212,7 +218,7 @@ export function PostForm({ post }: { post?: AdminPost }) {
 
           <div>
             <label className={`${labelClass} mb-2 block`}>Content (Markdown)</label>
-            <MarkdownEditor value={content} onChange={setContent} />
+            <MarkdownEditor value={content} onChange={setContent} onImageUploaded={uploads.track} />
           </div>
 
           <div className="rounded-2xl border border-foreground/10 p-5">

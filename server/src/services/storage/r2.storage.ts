@@ -1,6 +1,6 @@
-import { HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { env } from "../../config/env.js";
-import { createFileKey, type StorageDriver } from "./common.js";
+import { createFileKey, FILE_KEY_PATTERN, type StorageDriver } from "./common.js";
 
 const client = new S3Client({
     region: "auto",
@@ -15,7 +15,7 @@ export const r2Storage: StorageDriver = {
     async uploadFile({ buffer, extension, contentType }) {
         const key = createFileKey(extension);
         await client.send(new PutObjectCommand({
-            Bucket: env.R2_BUCKET,
+            Bucket: env.R2_BUCKET_NAME,
             Key: key,
             Body: buffer,
             ContentType: contentType,
@@ -23,7 +23,12 @@ export const r2Storage: StorageDriver = {
         return { key, url: `${env.R2_PUBLIC_URL}/${key}` };
     },
 
+    async deleteFile(key) {
+        if (!FILE_KEY_PATTERN.test(key)) return;
+        await client.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }));
+    },
+
     async checkConnection() {
-        await client.send(new HeadBucketCommand({ Bucket: env.R2_BUCKET }));
+        await client.send(new HeadBucketCommand({ Bucket: env.R2_BUCKET_NAME }));
     },
 };

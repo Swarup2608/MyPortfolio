@@ -98,7 +98,7 @@ export async function Projects() {
 
   try {
     const data = await publicFetch<PublicProjectListResponse>("/projects", { revalidate: 30 });
-    projects = data.data;
+    projects = data?.data ?? [];
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
   }

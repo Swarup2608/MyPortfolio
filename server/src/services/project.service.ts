@@ -4,6 +4,8 @@ import type { UpdateProjectInput } from '../schemas/project-update.schema.js';
 import {AppError} from '../utils/app-error.js';
 import { validateObjectId } from '../utils/object-id.js';
 import { slugify } from '../utils/slugify.js';
+import { promoteLocalImages } from './storage/promote.js';
+import { mediaKeysOf, syncMedia } from './media.service.js';
 
 async function uniqueSlugFromTitle(title: string): Promise<string> {
     const base = slugify(title) || "project";
@@ -25,11 +27,16 @@ export  async function createProject(input: createProjectInput){
     }else{
         slug = await uniqueSlugFromTitle(input.title);
     }
-    return Project.create({
-        ...input,
+    // Move an image uploaded to local disk while editing to the cloud, rewriting its URL.
+    const { input: finalInput, cleanup } = await promoteLocalImages(input);
+    const project = await Project.create({
+        ...finalInput,
         slug,
-        ...(input.status === "PUBLISHED" ? { publishedAt: new Date() } : {}),
+        ...(finalInput.status === "PUBLISHED" ? { publishedAt: new Date() } : {}),
     });
+    await cleanup();
+    await syncMedia(new Set(), mediaKeysOf(project.description, project.image?.key));
+    return project;
 }
 
 export async function getProjects(){
@@ -57,13 +64,18 @@ export async function updateProject(projectId: string, input: UpdateProjectInput
             throw new AppError("[project] Project with this slug already exists",409);
         }
     }
-    const { image, githubUrl, liveUrl, ...fields } = input;
+    const mediaBefore = mediaKeysOf(project.description, project.image?.key);
+    // Move an image uploaded to local disk while editing to the cloud, rewriting its URL.
+    const { input: finalInput, cleanup } = await promoteLocalImages(input);
+    const { image, githubUrl, liveUrl, ...fields } = finalInput;
     Object.assign(project, fields);
     // null removes the stored value; undefined leaves it unchanged.
     if(image !== undefined) project.image = image ?? undefined;
     if(githubUrl !== undefined) project.githubUrl = githubUrl ?? undefined;
     if(liveUrl !== undefined) project.liveUrl = liveUrl ?? undefined;
     await project.save();
+    await cleanup();
+    await syncMedia(mediaBefore, mediaKeysOf(project.description, project.image?.key));
     return project;
 }
 
@@ -73,7 +85,9 @@ export async function deleteProject(projectId: string){
     if(!project){
         throw new AppError("[project] Project Not Found",404);
     }
+    const mediaBefore = mediaKeysOf(project.description, project.image?.key);
     await project.deleteOne();
+    await syncMedia(mediaBefore, new Set());
 }
 
 export async function changeProjectStatus(projectId: string, projectStatus: "PUBLISHED" | "DRAFT" | "ARCHIVED"){

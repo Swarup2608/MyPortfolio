@@ -9,7 +9,7 @@ export async function LatestPosts() {
 
   try {
     const data = await publicFetch<PostListResponse>("/posts?limit=3", { revalidate: 30 });
-    posts = data.data;
+    posts = data?.data ?? [];
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
   }

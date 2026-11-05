@@ -25,6 +25,11 @@ export default async function BlogPage({
     publicFetch<ApiResponse<string[]>>("/posts/tags", { revalidate: 60 }),
   ]);
 
+  // Tolerate a malformed API response instead of crashing the whole page.
+  const posts = postsData?.data ?? [];
+  const tags = tagsData?.data ?? [];
+  const pagination = postsData?.pagination ?? { page: 1, limit: 9, total: 0, pages: 0 };
+
   return (
     <Container className="max-w-6xl py-16 sm:py-20">
       <div className="text-xs font-medium uppercase tracking-widest text-accent">Journal</div>
@@ -36,20 +41,20 @@ export default async function BlogPage({
       </p>
 
       <div className="mt-10 sm:mt-14">
-        <TagFilter tags={tagsData.data} activeTag={tag} />
+        <TagFilter tags={tags} activeTag={tag} />
       </div>
 
-      {postsData.data.length === 0 ? (
+      {posts.length === 0 ? (
         <p className="mt-16 text-center text-foreground/40">No posts yet — check back soon.</p>
       ) : (
         <div className="mt-10 grid gap-x-7 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-          {postsData.data.map((post) => (
+          {posts.map((post) => (
             <PostCard key={post._id} post={post} />
           ))}
         </div>
       )}
 
-      <Pagination pagination={postsData.pagination} basePath="/blog" searchParams={{ tag }} />
+      <Pagination pagination={pagination} basePath="/blog" searchParams={{ tag }} />
     </Container>
   );
 }
